@@ -61,8 +61,9 @@ namespace TestServer
             XDocument xdoc = XDocument.Load(response.GetResponseStream());
         }
 
-        public static async Task<GeoCoordinate[]> GetElevationResultsAsync(GeoCoordinate[] latlongs)
+        public static async Task<ElevationResponse> GetElevationResultsAsync(GeoCoordinate[] latlongs)
         {
+            List<Result> myResults = new List<Result>();
             StringBuilder sbLocs = new StringBuilder();
             int n = 0;
             foreach (var latlong in latlongs)
@@ -77,7 +78,6 @@ namespace TestServer
             string requestUrl = baseUrl + string.Format("?key={0}&locations={1}", apiKey, sbLocs.ToString());
             using (var client = new HttpClient())
             {
-                
                 var request = await client.GetAsync(requestUrl);
                 var content = await request.Content.ReadAsStringAsync();
                 if (request.StatusCode == HttpStatusCode.OK)
@@ -91,14 +91,17 @@ namespace TestServer
                         {
                             if (result != null) //TODO: nevim jestli to tam jen tak házet nebo to vytvářet na novo ale mělo by to snad jít za sebou
                             {
+                                string latitude = result.XPathSelectElement("location/lat")?.Value;
+                                string longtitude = result.XPathSelectElement("location/lng")?.Value;
                                 string elevation = result.XPathSelectElement("elevation")?.Value;
                                 string resolution = result.XPathSelectElement("resolution")?.Value;
+                                bool isLatParsed = double.TryParse(latitude, NumberStyles.Float, CultureInfo.InvariantCulture, out double lat);
+                                bool isLngParsed = double.TryParse(longtitude, NumberStyles.Float, CultureInfo.InvariantCulture, out double lng);
                                 bool isEleParsed = double.TryParse(elevation, NumberStyles.Float, CultureInfo.InvariantCulture, out double ele);
                                 bool isResParsed = double.TryParse(resolution, NumberStyles.Float, CultureInfo.InvariantCulture, out double res);
-                                if (isEleParsed && isResParsed)
+                                if (isLatParsed && isLngParsed && isEleParsed && isResParsed)
                                 { 
-                                    latlongs[0].Altitude = ele;
-                                    latlongs[0].VerticalAccuracy = res;
+                                    myResults.Add(new Result(lat, lng, ele, res));
                                 }
                                 else
                                 {
@@ -118,7 +121,14 @@ namespace TestServer
                 }   
             }
 
-            return latlongs;
+            if (myResults.Count > 0)
+            {
+                return new ElevationResponse("OK", myResults.ToArray());
+            }
+            else
+            {
+                return new ElevationResponse("KO", myResults.ToArray());
+            }
         }
     }
 }

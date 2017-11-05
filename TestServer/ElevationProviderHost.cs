@@ -37,12 +37,12 @@ namespace TestServer
                 latLongs.Add(geo);
             }
 
-            GeoCoordinate[] googleElevation = null;
+            ElevationResponse googleElevation = null;
 
             try
             {
                 googleElevation = await GoogleElevationProvider.GetElevationResultsAsync(latLongs.ToArray());
-                var i = googleElevation.Length;
+                
             }
             catch (Exception e)
             {
@@ -52,6 +52,8 @@ namespace TestServer
            
 
             Message response = Message.CreateMessage(MessageVersion.None, "*", googleElevation);
+            //OutgoingWebRequestContext outgoingWebRequestContext = webOperationContext.OutgoingRequest;
+            //outgoingWebRequestContext.Headers.Add("MyCustomHeader", "XML Request");
             return response;
         }
 
