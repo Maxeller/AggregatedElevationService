@@ -83,7 +83,7 @@ namespace TestServer
                 if (request.StatusCode == HttpStatusCode.OK)
                 {
                     var xmlDocument = XDocument.Parse(content);
-                    if (xmlDocument.XPathSelectElement("ElevationResponse/status")?.Value == "OK") //TODO: NEFUNGUJE KURVA DRÁT .. prej descendats 
+                    if (xmlDocument.XPathSelectElement("ElevationResponse/status")?.Value == "OK")
                     {
                         var results = xmlDocument.XPathSelectElements("ElevationResponse/result");
                         int i = 0;

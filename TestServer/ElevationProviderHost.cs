@@ -9,6 +9,7 @@ using System.ServiceModel.Channels;
 using System.ServiceModel.Web;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml.Serialization;
 
 namespace TestServer
 {
@@ -36,9 +37,11 @@ namespace TestServer
                 latLongs.Add(geo);
             }
 
+            GeoCoordinate[] googleElevation = null;
+
             try
             {
-                GeoCoordinate[] googleElevation = await GoogleElevationProvider.GetElevationResultsAsync(latLongs.ToArray());
+                googleElevation = await GoogleElevationProvider.GetElevationResultsAsync(latLongs.ToArray());
                 var i = googleElevation.Length;
             }
             catch (Exception e)
@@ -46,11 +49,9 @@ namespace TestServer
                 Console.WriteLine(e);
             }
             
+           
 
-
-            Message response = Message.CreateMessage(MessageVersion.None, "*", "Odpoved");
-            OutgoingWebRequestContext outgoingWebRequestContext = webOperationContext.OutgoingRequest;
-            outgoingWebRequestContext.Headers.Add("MyCustomHeader", "XmlRequest");
+            Message response = Message.CreateMessage(MessageVersion.None, "*", googleElevation);
             return response;
         }
 

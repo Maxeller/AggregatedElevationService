@@ -48,6 +48,7 @@
   <ItemGroup>
     <Compile Include="ElevationProvider.cs" />
     <Compile Include="ElevationProviderHost.cs" />
+    <Compile Include="ElevationResponse.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
