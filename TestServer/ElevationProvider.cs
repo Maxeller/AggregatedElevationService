@@ -86,10 +86,9 @@ namespace TestServer
                     if (xmlDocument.XPathSelectElement("ElevationResponse/status")?.Value == "OK")
                     {
                         var results = xmlDocument.XPathSelectElements("ElevationResponse/result");
-                        int i = 0;
                         foreach (XElement result in results)
                         {
-                            if (result != null) //TODO: nevim jestli to tam jen tak házet nebo to vytvářet na novo ale mělo by to snad jít za sebou
+                            if (result != null)
                             {
                                 string latitude = result.XPathSelectElement("location/lat")?.Value;
                                 string longtitude = result.XPathSelectElement("location/lng")?.Value;
@@ -105,7 +104,7 @@ namespace TestServer
                                 }
                                 else
                                 {
-                                    throw new ElevationProviderException("Data couldnt be parsed: " + result);
+                                    throw new ElevationProviderException("Data couldnt be parsed: " + result); //TODO: tohle by možnná měla bejt chyba do response
                                 }
                             }
                         }

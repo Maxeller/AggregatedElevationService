@@ -21,7 +21,7 @@ namespace TestServer
             //TestElevationProviders();
             //XmlSerializationTest();
             //Console.ReadKey();
-
+            
             WebHttpBinding binding = new WebHttpBinding();
             WebServiceHost webServiceHost = new WebServiceHost(typeof(ElevationProviderHost));
             webServiceHost.AddServiceEndpoint(typeof(ElevationProviderHost), binding, URL);
@@ -30,6 +30,7 @@ namespace TestServer
             Console.WriteLine("Press enter to stop service");
             Console.ReadLine();
             webServiceHost.Close();
+            
         }
 
         static async void TestElevationProviders()
@@ -44,12 +45,17 @@ namespace TestServer
         static void XmlSerializationTest()
         {
             Result[] results = new Result[2];
-            Result r1 = new Result(1.0f, 1.0f, 1.0f, 1.0f);
-            Result r2 = new Result(2.0f, 2.0f, 2.0f, 2.0f);
+            List<Result> res = new List<Result>();
+            Result r1 = new Result(39.7391536f, -104.9847034f, 1608.6379395f, 4.771976f);
+            Result r2 = new Result(50.482999f, 13.430489f, 367.9305725f, 152.7032318f);
             results[0] = r1;
             results[1] = r2;
-            ElevationResponse er = new ElevationResponse("OK", results);
-            Console.WriteLine(er.SerializeObject());
+            res.Add(r1);
+            res.Add(r2);
+            ElevationResponse erPole = new ElevationResponse("OK", results);
+            ElevationResponse erList = new ElevationResponse("OK", res.ToArray());
+            Console.WriteLine(erPole.SerializeObject());
+            Console.WriteLine(erList.SerializeObject());
         }
     }
 

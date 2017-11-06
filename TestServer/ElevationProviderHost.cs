@@ -3,12 +3,14 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Device.Location;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.ServiceModel;
 using System.ServiceModel.Channels;
 using System.ServiceModel.Web;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml;
 using System.Xml.Serialization;
 
 namespace TestServer
@@ -18,7 +20,8 @@ namespace TestServer
     {
         [OperationContract()]
         [WebGet(UriTemplate = "/xml?key={key}&locations={locations}")]
-        public async Task<Message> XmlRequest(string key, string locations)
+        [XmlSerializerFormat()]
+        public async Task<ElevationResponse> XmlRequest(string key, string locations)
         {
             WebOperationContext webOperationContext = WebOperationContext.Current;
             IncomingWebRequestContext incomingWebRequestContext = webOperationContext.IncomingRequest;
@@ -26,7 +29,7 @@ namespace TestServer
             Console.WriteLine("{0}: Request (XmlRequest) to {1}", System.DateTime.Now, uri);
 
             string[] locationsSplit = locations.Split('|'); //TODO: kontrola formátování
-            List<GeoCoordinate> latLongs = new List<GeoCoordinate>();
+            List<GeoCoordinate> latLongs = new List<GeoCoordinate>(); //TODO: neukládat asi do GeoCoordinates 
             foreach (string loc in locationsSplit)
             {
                 string[] locSplit = loc.Split(','); 
@@ -48,13 +51,12 @@ namespace TestServer
             {
                 Console.WriteLine(e);
             }
-            
-           
 
-            Message response = Message.CreateMessage(MessageVersion.None, "*", googleElevation);
+            //Message response = Message.CreateMessage(MessageVersion.None, "*", googleElevation); //TODO: hybrid na ntb nefunguje
             //OutgoingWebRequestContext outgoingWebRequestContext = webOperationContext.OutgoingRequest;
             //outgoingWebRequestContext.Headers.Add("MyCustomHeader", "XML Request");
-            return response;
+            //return response;
+            return googleElevation;
         }
 
         [OperationContract()]

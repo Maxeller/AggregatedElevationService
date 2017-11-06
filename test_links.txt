@@ -1,2 +1,2 @@
-localhost:8889/elevation/xml?locations=39.7391536,-104.9847034|50.482999, 13.430489&key=klic
+localhost:8889/elevation/xml?locations=39.7391536,-104.9847034|50.482999,13.430489&key=klic
 https://maps.googleapis.com/maps/api/elevation/xml?locations=39.7391536,-104.9847034|50.482999, 13.430489&key=AIzaSyBXNtwvKHCj4d-fkOr4rqhYloJRwISgR7g
