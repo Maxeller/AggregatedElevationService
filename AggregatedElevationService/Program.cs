@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 using System.ServiceModel.Web;
 using System.Xml.Serialization;
 
-namespace TestServer
+namespace AggregatedElevationService
 {
     class Program
     {

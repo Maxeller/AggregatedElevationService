@@ -13,20 +13,20 @@ using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Serialization;
 
-namespace TestServer
+namespace AggregatedElevationService
 {
     [ServiceContract]
     class ElevationProviderHost
     {
         [OperationContract()]
-        [WebGet(UriTemplate = "/xml?key={key}&locations={locations}")]
+        [WebGet(UriTemplate = "/xml?key={key}&locations={locations}", ResponseFormat = WebMessageFormat.Xml)]
         [XmlSerializerFormat()]
         public async Task<ElevationResponse> XmlRequest(string key, string locations)
         {
             WebOperationContext webOperationContext = WebOperationContext.Current;
             IncomingWebRequestContext incomingWebRequestContext = webOperationContext.IncomingRequest;
             string uri = incomingWebRequestContext.UriTemplateMatch.RequestUri.ToString();
-            Console.WriteLine("{0}: Request (XmlRequest) to {1}", System.DateTime.Now, uri);
+            Console.WriteLine("{0}: Request (XmlRequest) to {1}", System.DateTime.Now, uri); //TODO: logování do souboru (asi i podrobnější)
 
             string[] locationsSplit = locations.Split('|'); //TODO: kontrola formátování
             List<GeoCoordinate> latLongs = new List<GeoCoordinate>(); //TODO: neukládat asi do GeoCoordinates 
@@ -53,36 +53,44 @@ namespace TestServer
             }
 
             //Message response = Message.CreateMessage(MessageVersion.None, "*", googleElevation); //TODO: hybrid na ntb nefunguje
-            //OutgoingWebRequestContext outgoingWebRequestContext = webOperationContext.OutgoingRequest;
-            //outgoingWebRequestContext.Headers.Add("MyCustomHeader", "XML Request");
             //return response;
             return googleElevation;
         }
 
         [OperationContract()]
-        [WebGet(UriTemplate = "/json?key={key}&locations={latlongs}")]
-        public Message JsonRequest(string key, string latlongs)
+        [WebGet(UriTemplate = "/json?key={key}&locations={locations}", ResponseFormat = WebMessageFormat.Json)]
+        public async Task<ElevationResponse> JsonRequest(string key, string locations)
         {
-            Console.WriteLine("{0}: Request caugth by JsonRequest", System.DateTime.Now);
             WebOperationContext webOperationContext = WebOperationContext.Current;
             IncomingWebRequestContext incomingWebRequestContext = webOperationContext.IncomingRequest;
             string uri = incomingWebRequestContext.UriTemplateMatch.RequestUri.ToString();
-            Console.WriteLine("{0}: Request to {1}", System.DateTime.Now, uri);
-            NameValueCollection query = incomingWebRequestContext.UriTemplateMatch.QueryParameters;
-            if (query.Count != 0)
+            Console.WriteLine("{0}: Request (JsonRequest) to {1}", System.DateTime.Now, uri);
+
+            string[] locationsSplit = locations.Split('|'); //TODO: kontrola formátování
+            List<GeoCoordinate> latLongs = new List<GeoCoordinate>(); //TODO: neukládat asi do GeoCoordinates 
+            foreach (string loc in locationsSplit)
             {
-                Console.WriteLine("QueryString:");
-                var enumerator = query.GetEnumerator();
-                while (enumerator.MoveNext())
-                {
-                    string name = enumerator.Current.ToString();
-                    Console.WriteLine("{0} = {1}", name, query[name]);
-                }
+                string[] locSplit = loc.Split(',');
+                double.TryParse(locSplit[0], NumberStyles.Float, CultureInfo.InvariantCulture, out double lat); //TODO: kontrola jestli se hodnoty rozparsovali
+                double.TryParse(locSplit[1], NumberStyles.Float, CultureInfo.InvariantCulture, out double lon);
+                //TODO: kontrola správnosti údajů 
+                GeoCoordinate geo = new GeoCoordinate(lat, lon);
+                latLongs.Add(geo);
             }
-            Message response = Message.CreateMessage(MessageVersion.None, "*", "Odpoved");
-            OutgoingWebRequestContext outgoingWebRequestContext = webOperationContext.OutgoingRequest;
-            outgoingWebRequestContext.Headers.Add("MyCustomHeader", "JsonRequest");
-            return response;
+
+            ElevationResponse googleElevation = null;
+
+            try
+            {
+                googleElevation = await GoogleElevationProvider.GetElevationResultsAsync(latLongs.ToArray());
+
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
+
+            return googleElevation;
         }
 
         [OperationContract()]

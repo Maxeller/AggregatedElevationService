@@ -10,7 +10,7 @@ using System.Net.Http;
 using System.Xml.Linq;
 using System.Xml.XPath;
 
-namespace TestServer
+namespace AggregatedElevationService
 {
     interface IElevationProvider
     {
