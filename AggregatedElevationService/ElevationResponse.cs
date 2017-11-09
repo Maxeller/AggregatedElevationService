@@ -4,10 +4,10 @@ namespace AggregatedElevationService
 {
     public class ElevationResponse
     {
-        //[XmlElement(ElementName = "status")]
-        public string status;
-        [XmlElement]
-        public Result[] result;
+        [XmlElement(ElementName = "status")]
+        public string Status;
+        [XmlElement(ElementName = "result")]
+        public Result[] Results;
 
         public ElevationResponse()
         {
@@ -16,19 +16,19 @@ namespace AggregatedElevationService
 
         public ElevationResponse(string status, Result[] results)
         {
-            this.status = status;
-            this.result = results;
+            this.Status = status;
+            this.Results = results;
         }
     }
 
     public class Result
     {
-        //[XmlElement(ElementName = "location")]
-        public Location location;
-        //[XmlElement(ElementName = "elevation")]
-        public double elevation;
-        //[XmlElement(ElementName = "resolution")]
-        public double resolution;
+        [XmlElement(ElementName = "location")]
+        public Location Location;
+        [XmlElement(ElementName = "elevation")]
+        public double Elevation;
+        [XmlElement(ElementName = "resolution")]
+        public double Resolution;
 
         public Result()
         {
@@ -37,25 +37,25 @@ namespace AggregatedElevationService
 
         public Result(Location location, double elevation, double resolution)
         {
-            this.location = location;
-            this.elevation = elevation;
-            this.resolution = resolution;
+            this.Location = location;
+            this.Elevation = elevation;
+            this.Resolution = resolution;
         }
 
         public Result(double latitude, double longtitude, double elevation, double resolution)
         {
-            this.location = new Location(latitude, longtitude);
-            this.elevation = elevation;
-            this.resolution = resolution;
+            this.Location = new Location(latitude, longtitude);
+            this.Elevation = elevation;
+            this.Resolution = resolution;
         }
     }
 
     public class Location
     {
-        //[XmlElement(ElementName = "lat")]
-        public double lat;
-        //[XmlElement(ElementName = "lng")]
-        public double lng;
+        [XmlElement(ElementName = "lat")]
+        public double Latitude;
+        [XmlElement(ElementName = "lng")]
+        public double Longtitude;
 
         public Location()
         {
@@ -64,8 +64,8 @@ namespace AggregatedElevationService
 
         public Location(double latitude, double longtitude)
         {
-            this.lat = latitude;
-            this.lng = longtitude;
+            this.Latitude = latitude;
+            this.Longtitude = longtitude;
         }
     }
 }
