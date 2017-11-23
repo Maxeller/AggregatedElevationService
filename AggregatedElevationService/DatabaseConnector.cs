@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Npgsql;
 using System.IO;
+using NpgsqlTypes;
 
 namespace AggregatedElevationService
 {
@@ -21,7 +23,7 @@ namespace AggregatedElevationService
 
     class PostgreConnector : IDatabaseConnector
     {
-        private string connectionString = "Host=localhost;Username=postgres;Password=root;Database=test";
+        const string ConnectionString = "Host=localhost;Username=postgres;Password=root;Database=test";
 
         public PostgreConnector()
         {
@@ -30,7 +32,7 @@ namespace AggregatedElevationService
 
         public void InitializeDatabase()
         {
-            using (var conn = new NpgsqlConnection(connectionString))
+            using (var conn = new NpgsqlConnection(ConnectionString))
             {
                 conn.Open();
 
@@ -68,39 +70,49 @@ namespace AggregatedElevationService
             sr.Close();
 
             int rowCount = 0;
-            using (var conn = new NpgsqlConnection(connectionString))
+            Stopwatch s = Stopwatch.StartNew(); //TODO: delete?
+            using (var conn = new NpgsqlConnection(ConnectionString))
             {
                 conn.Open();
-                foreach (xyz xyz in xyzs) //TODO: this takes to much fucking time
+                using (var cmd = new NpgsqlCommand()) //TODO: smazat
+                {
+                    cmd.Connection = conn;
+                    cmd.CommandText = "DELETE FROM points";
+                    cmd.ExecuteNonQuery();
+                }
+                foreach (xyz xyz in xyzs) //TODO: 700k trvá asi pět minut takže async + zjistit jestli nelze zrychlit
                 {
                     rowCount++;
                     using (var cmd = new NpgsqlCommand())
                     {
                         cmd.Connection = conn;
-                        cmd.CommandText = "INSERT INTO points(point) VALUES (ST_SetSRID(ST_MakePoint(@x, @y, @z), 2065))";
+                        //Transformace z S-JTSK (2065) -> WGS84 (4326)
+                        cmd.CommandText = "INSERT INTO points(point) VALUES (ST_Transform(ST_SetSRID(ST_MakePoint(@x, @y, @z), 2065), 4326))"; 
+                        //TODO: REPLACE?
                         cmd.Parameters.AddWithValue("x", xyz.x);
                         cmd.Parameters.AddWithValue("y", xyz.y);
                         cmd.Parameters.AddWithValue("z", xyz.z);
-                        //cmd.Prepare();
+                        //cmd.Prepare(); //TODO: možnost zrychlení?
                         cmd.ExecuteNonQuery();
                     }
                 }
             }
-            Console.WriteLine("{0} rows added", rowCount);
+            s.Stop();
+            Console.WriteLine("{0} rows added it took {1} ms", rowCount, s.ElapsedMilliseconds); //TODO: vylepšit výstup
         }
+    }
 
-        struct xyz
+    struct xyz
+    {
+        public readonly double x;
+        public readonly double y;
+        public readonly double z;
+
+        public xyz(double x, double y, double z)
         {
-            public readonly double x;
-            public readonly double y;
-            public readonly double z;
-
-            public xyz(double x, double y, double z)
-            {
-                this.x = x;
-                this.y = y;
-                this.z = z;
-            }
+            this.x = x;
+            this.y = y;
+            this.z = z;
         }
     }
 }
