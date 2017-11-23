@@ -52,6 +52,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="DatabaseConnector.cs" />
     <Compile Include="ElevationProvider.cs" />
     <Compile Include="ElevationProviderHost.cs" />
     <Compile Include="ElevationResponse.cs" />

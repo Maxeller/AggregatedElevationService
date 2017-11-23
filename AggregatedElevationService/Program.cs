@@ -16,8 +16,13 @@ namespace AggregatedElevationService
         {
             //TestElevationProviders();
             //XmlSerializationTest();
-            //Console.ReadKey();
-            
+            //StartElevationService();
+            TestDatabase();
+            Console.ReadKey();
+        }
+
+        static void StartElevationService()
+        {
             WebHttpBinding binding = new WebHttpBinding();
             WebServiceHost webServiceHost = new WebServiceHost(typeof(ElevationProviderHost));
             webServiceHost.AddServiceEndpoint(typeof(ElevationProviderHost), binding, URL);
@@ -26,7 +31,12 @@ namespace AggregatedElevationService
             Console.WriteLine("Press enter to stop service");
             Console.ReadLine();
             webServiceHost.Close();
-            
+        }
+
+        static void TestDatabase()
+        {
+            PostgreConnector pgc = new PostgreConnector();
+            pgc.LoadxyzFile(@"MOST64_5g.xyz");
         }
 
         static async void TestElevationProviders()
