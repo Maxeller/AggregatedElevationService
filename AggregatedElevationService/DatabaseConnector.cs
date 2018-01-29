@@ -21,16 +21,16 @@ namespace AggregatedElevationService
 
     }
 
-    class PostgreConnector : IDatabaseConnector
+    class PostgreConnector //TODO: přejmenovat
     {
-        const string ConnectionString = "Host=localhost;Username=postgres;Password=root;Database=test";
+        const string ConnectionString = "Host=localhost;Username=postgres;Password=root;Database=test"; //TODO: změnit databázi 
 
         public PostgreConnector()
         {
             
         }
 
-        public void InitializeDatabase()
+        public void InitializeDatabase() //TODO: dodělat
         {
             using (var conn = new NpgsqlConnection(ConnectionString))
             {
@@ -61,11 +61,24 @@ namespace AggregatedElevationService
             List<xyz> xyzs = new List<xyz>();
             while ((line = sr.ReadLine()) != null)
             {
-                var lineSplit = line.Trim().Split(' ');
-                double.TryParse(lineSplit[0], NumberStyles.Float, CultureInfo.InvariantCulture, out double x); //TODO: kontrola jestli se to rozparsovalo
-                double.TryParse(lineSplit[2], NumberStyles.Float, CultureInfo.InvariantCulture, out double y);
-                double.TryParse(lineSplit[4], NumberStyles.Float, CultureInfo.InvariantCulture, out double z);
-                xyzs.Add(new xyz(x,y,z));
+                if (line.Contains("  "))
+                {
+                    line = line.Replace("  ", "\t");
+                }
+
+                if (line.Contains(","))
+                {
+                    line = line.Replace(",", ".");
+                }
+
+                var lineSplit = line.Trim().Split('\t');
+                var xParsed = double.TryParse(lineSplit[0], NumberStyles.Float, CultureInfo.InvariantCulture, out double x);
+                var yParsed = double.TryParse(lineSplit[1], NumberStyles.Float, CultureInfo.InvariantCulture, out double y);
+                var zParsed = double.TryParse(lineSplit[2], NumberStyles.Float, CultureInfo.InvariantCulture, out double z);
+                if (xParsed && yParsed && zParsed) //TODO: log, že se asi něco nerozparsovalo
+                {
+                    xyzs.Add(new xyz(x, y, z));
+                }
             }
             sr.Close();
 
@@ -80,25 +93,46 @@ namespace AggregatedElevationService
                     cmd.CommandText = "DELETE FROM points";
                     cmd.ExecuteNonQuery();
                 }
-                foreach (xyz xyz in xyzs) //TODO: 700k trvá asi pět minut takže async + zjistit jestli nelze zrychlit
+                foreach (xyz xyz in xyzs) //TODO: 700k trvá asi 5 (13 ntb) minut takže async + zjistit jestli nelze zrychlit
                 {
                     rowCount++;
                     using (var cmd = new NpgsqlCommand())
                     {
                         cmd.Connection = conn;
-                        //Transformace z S-JTSK (2065) -> WGS84 (4326)
-                        cmd.CommandText = "INSERT INTO points(point) VALUES (ST_Transform(ST_SetSRID(ST_MakePoint(@x, @y, @z), 2065), 4326))"; 
-                        //TODO: REPLACE?
+                        //Transformace z S-JTSK (5514) -> WGS84 (4326) | Vytvoření pointu -> Nastavení S-JTSK -> Trasformace na WGS84
+                        cmd.CommandText = "INSERT INTO points(point) VALUES (ST_Transform(ST_SetSRID(ST_MakePoint(@x, @y, @z), 5514), 4326))"; 
+                        //TODO: REPLACE? + víc najednou
                         cmd.Parameters.AddWithValue("x", xyz.x);
                         cmd.Parameters.AddWithValue("y", xyz.y);
                         cmd.Parameters.AddWithValue("z", xyz.z);
                         //cmd.Prepare(); //TODO: možnost zrychlení?
                         cmd.ExecuteNonQuery();
                     }
+                    //if(rowCount == 100) break; //TODO: smazat
                 }
             }
             s.Stop();
             Console.WriteLine("{0} rows added it took {1} ms", rowCount, s.ElapsedMilliseconds); //TODO: vylepšit výstup
+        }
+
+        public double GetElevation(double latitude, double longtitude)
+        {
+            using (var conn = new NpgsqlConnection(ConnectionString))
+            {
+                conn.Open();
+
+                using (var cmd = new NpgsqlCommand("SELECT * FROM points WHERE point = ", conn))
+                    using (var reader = cmd.ExecuteReader())
+                        while (reader.Read())
+                            Console.WriteLine(reader.GetString(0));
+
+            }
+            return 0;
+        }
+
+        public void GetClosestPoint(double latitude, double longtitude)
+        {
+            
         }
     }
 

@@ -36,7 +36,8 @@ namespace AggregatedElevationService
         static void TestDatabase()
         {
             PostgreConnector pgc = new PostgreConnector();
-            pgc.LoadxyzFile(@"MOST64_5g.xyz");
+            //pgc.LoadxyzFile(@"files/MOST64_5g.xyz");
+            pgc.LoadxyzFile(@"files/12-24-05.txt");
         }
 
         static async void TestElevationProviders()
