@@ -44,7 +44,7 @@ namespace AggregatedElevationService
         const string baseUrl = "https://maps.googleapis.com/maps/api/elevation/xml";
         const string apiKey = "AIzaSyBXNtwvKHCj4d-fkOr4rqhYloJRwISgR7g";
 
-        public void GetElevationResults(ref GeoCoordinate[] latlongs)
+        public void GetElevationResults(ref GeoCoordinate[] latlongs) //TODO: smazat
         {
             StringBuilder sbLocs = new StringBuilder();
             int n = 0;
@@ -60,15 +60,15 @@ namespace AggregatedElevationService
             XDocument xdoc = XDocument.Load(response.GetResponseStream());
         }
 
-        public static async Task<ElevationResponse> GetElevationResultsAsync(GeoCoordinate[] latlongs)
+        public static async Task<List<Result>> GetElevationResultsAsync(List<Location> locations) //TODO: asi nějak pořešit ten limit
         {
             List<Result> myResults = new List<Result>();
             StringBuilder sbLocs = new StringBuilder();
             int n = 0;
-            foreach (var latlong in latlongs)
+            foreach (var location in locations)
             {
-                sbLocs.AppendFormat(CultureInfo.InvariantCulture, "{0},{1}", latlong.Latitude, latlong.Longitude);
-                if (n < latlongs.Length - 1)
+                sbLocs.AppendFormat(CultureInfo.InvariantCulture, "{0},{1}", location.lat, location.lng);
+                if (n < locations.Count - 1)
                 {
                     sbLocs.Append("|");
                 }
@@ -103,7 +103,7 @@ namespace AggregatedElevationService
                                 }
                                 else
                                 {
-                                    throw new ElevationProviderException("Data couldnt be parsed: " + result); //TODO: tohle by možnná měla bejt chyba do response
+                                    throw new ElevationProviderException("Data couldnt be parsed: " + result); //TODO: tohle by možná měla bejt chyba do response
                                 }
                             }
                         }
@@ -119,13 +119,13 @@ namespace AggregatedElevationService
                 }   
             }
 
-            if (myResults.Count > 0)
+            if (myResults.Count > 0) //TODO: to tady asi bejt nemusí
             {
-                return new ElevationResponse("OK", myResults.ToArray());
+                return myResults;
             }
             else
             {
-                return new ElevationResponse("KO", myResults.ToArray());
+                return null;
             }
         }
     }

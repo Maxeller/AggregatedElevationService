@@ -16,8 +16,8 @@ namespace AggregatedElevationService
         {
             //TestElevationProviders();
             //XmlSerializationTest();
-            //StartElevationService();
-            TestDatabase();
+            StartElevationService();
+            //TestDatabase();
             Console.ReadKey();
         }
 
@@ -43,10 +43,10 @@ namespace AggregatedElevationService
         static async void TestElevationProviders()
         {
             GoogleElevationProvider google = new GoogleElevationProvider();
-            GeoCoordinate geo = new GeoCoordinate(39.7391536, -104.9847034);
-            GeoCoordinate[] geos = new GeoCoordinate[1];
-            geos[0] = geo;
-            var a = await GoogleElevationProvider.GetElevationResultsAsync(geos);
+            Location loc = new Location(39.7391536, -104.9847034);
+            var list = new List<Location>();
+            list.Add(loc);
+            var a = await GoogleElevationProvider.GetElevationResultsAsync(list);
         }
 
         static void XmlSerializationTest()

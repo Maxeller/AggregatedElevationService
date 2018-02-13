@@ -19,37 +19,16 @@ namespace AggregatedElevationService
         public async Task<ElevationResponse> XmlRequest(string key, string locations)
         {
             WebOperationContext webOperationContext = WebOperationContext.Current;
-            IncomingWebRequestContext incomingWebRequestContext = webOperationContext.IncomingRequest;
+            IncomingWebRequestContext incomingWebRequestContext = webOperationContext.IncomingRequest; //TODO: asi vyřešit tenhle possible NullReferenceException
             string uri = incomingWebRequestContext.UriTemplateMatch.RequestUri.ToString();
             Console.WriteLine("{0}: Request (XmlRequest) to {1}", System.DateTime.Now, uri); //TODO: logování do souboru (asi i podrobnější)
 
-            string[] locationsSplit = locations.Split('|'); //TODO: kontrola formátování
-            List<GeoCoordinate> latLongs = new List<GeoCoordinate>(); //TODO: neukládat asi do GeoCoordinates 
-            foreach (string loc in locationsSplit)
-            {
-                string[] locSplit = loc.Split(','); 
-                double.TryParse(locSplit[0], NumberStyles.Float, CultureInfo.InvariantCulture, out double lat); //TODO: kontrola jestli se hodnoty rozparsovali
-                double.TryParse(locSplit[1], NumberStyles.Float, CultureInfo.InvariantCulture, out double lon);
-                //TODO: kontrola správnosti údajů 
-                GeoCoordinate geo = new GeoCoordinate(lat, lon);
-                latLongs.Add(geo);
-            }
-
-            ElevationResponse googleElevation = null;
-
-            try
-            {
-                googleElevation = await GoogleElevationProvider.GetElevationResultsAsync(latLongs.ToArray());
-                
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e);
-            }
+            RequestHandler requestHandler = new RequestHandler(key, locations);
+            var elevationResponse = await requestHandler.HandleRequest();
 
             //Message response = Message.CreateMessage(MessageVersion.None, "*", googleElevation); //TODO: hybrid na ntb nefunguje
             //return response;
-            return googleElevation;
+            return elevationResponse;
         }
 
         [OperationContract()]
@@ -61,31 +40,10 @@ namespace AggregatedElevationService
             string uri = incomingWebRequestContext.UriTemplateMatch.RequestUri.ToString();
             Console.WriteLine("{0}: Request (JsonRequest) to {1}", System.DateTime.Now, uri);
 
-            string[] locationsSplit = locations.Split('|'); //TODO: kontrola formátování
-            List<GeoCoordinate> latLongs = new List<GeoCoordinate>(); //TODO: neukládat asi do GeoCoordinates 
-            foreach (string loc in locationsSplit)
-            {
-                string[] locSplit = loc.Split(',');
-                double.TryParse(locSplit[0], NumberStyles.Float, CultureInfo.InvariantCulture, out double lat); //TODO: kontrola jestli se hodnoty rozparsovali
-                double.TryParse(locSplit[1], NumberStyles.Float, CultureInfo.InvariantCulture, out double lon);
-                //TODO: kontrola správnosti údajů 
-                GeoCoordinate geo = new GeoCoordinate(lat, lon);
-                latLongs.Add(geo);
-            }
+            RequestHandler requestHandler = new RequestHandler(key, locations);
+            var elevationResponse = await requestHandler.HandleRequest();
 
-            ElevationResponse googleElevation = null;
-
-            try
-            {
-                googleElevation = await GoogleElevationProvider.GetElevationResultsAsync(latLongs.ToArray());
-
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e);
-            }
-
-            return googleElevation;
+            return elevationResponse;
         }
 
         [OperationContract()]

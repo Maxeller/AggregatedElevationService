@@ -7,7 +7,7 @@ namespace AggregatedElevationService
         //[XmlElement(ElementName = "status")]
         public string status;
         [XmlElement]
-        public Result[] result;
+        public Result[] result; //TODO: může bejt tohle list (Kubera question from OON)
 
         public ElevationResponse()
         {
