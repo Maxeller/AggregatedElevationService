@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Device.Location;
 using System.IO;
 using System.ServiceModel;
 using System.ServiceModel.Web;
@@ -14,9 +13,9 @@ namespace AggregatedElevationService
 
         static void Main(string[] args)
         {
-            //TestElevationProviders();
+            TestElevationProviders();
             //XmlSerializationTest();
-            StartElevationService();
+            //StartElevationService();
             //TestDatabase();
             Console.ReadKey();
         }
@@ -42,11 +41,14 @@ namespace AggregatedElevationService
 
         static async void TestElevationProviders()
         {
-            GoogleElevationProvider google = new GoogleElevationProvider();
-            Location loc = new Location(39.7391536, -104.9847034);
-            var list = new List<Location>();
-            list.Add(loc);
-            var a = await GoogleElevationProvider.GetElevationResultsAsync(list);
+            var list = new List<Location>
+            {
+                new Location(50.482999f, 13.430489f)
+            };
+            //GoogleElevationProvider google = new GoogleElevationProvider();
+            //var a = await google.GetElevationResultsAsync(list);
+            SeznamElevationProvider seznam = new SeznamElevationProvider();
+            var a = await seznam.GetElevationResultsAsync(list);
         }
 
         static void XmlSerializationTest()

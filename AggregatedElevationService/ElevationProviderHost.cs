@@ -1,8 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Collections.Specialized;
-using System.Device.Location;
-using System.Globalization;
 using System.ServiceModel;
 using System.ServiceModel.Channels;
 using System.ServiceModel.Web;
@@ -23,7 +20,7 @@ namespace AggregatedElevationService
             string uri = incomingWebRequestContext.UriTemplateMatch.RequestUri.ToString();
             Console.WriteLine("{0}: Request (XmlRequest) to {1}", System.DateTime.Now, uri); //TODO: logování do souboru (asi i podrobnější)
 
-            RequestHandler requestHandler = new RequestHandler(key, locations);
+            var requestHandler = new RequestHandler(key, locations);
             var elevationResponse = await requestHandler.HandleRequest();
 
             //Message response = Message.CreateMessage(MessageVersion.None, "*", googleElevation); //TODO: hybrid na ntb nefunguje

@@ -67,19 +67,19 @@ namespace AggregatedElevationService
 
         private async Task<List<Result>> GetElevation(List<Location> locations) //TODO: dodělat
         {         
-            List<Result> googleElevation = null;
+            GoogleElevationProvider google = new GoogleElevationProvider();
+            List<Result> googleResults = null;
 
             try
             {
-                googleElevation = await GoogleElevationProvider.GetElevationResultsAsync(locations);
+                googleResults = await google.GetElevationResultsAsync(locations);
             }
             catch (Exception e)
             {
                 Console.WriteLine(e);
             }
 
-
-            return googleElevation;
+            return googleResults;
         }
     }
 }
