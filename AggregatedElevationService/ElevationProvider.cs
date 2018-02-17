@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Device.Location;
 using System.Globalization;
-using System.IO;
-using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -18,24 +15,6 @@ namespace AggregatedElevationService
 
     }
 
-    class ElevationProviderException : Exception
-    {
-        public ElevationProviderException()
-        {
-            
-        }
-
-        public ElevationProviderException(string message) : base(message)
-        {
-            
-        }
-
-        public ElevationProviderException(string message, Exception inner) : base(message, inner)
-        {
-            
-        }
-    }
-
     class ElevationProvider //TODO: dodělat nebo smazat
     {
 
@@ -43,116 +22,164 @@ namespace AggregatedElevationService
 
     class GoogleElevationProvider
     {
-        const string BASE_URL = "https://maps.googleapis.com/maps/api/elevation/xml";
-        const string API_KEY = "AIzaSyBXNtwvKHCj4d-fkOr4rqhYloJRwISgR7g";
+        private const string BASE_URL = "https://maps.googleapis.com/maps/api/elevation/xml";
+        private const string API_KEY = "AIzaSyBXNtwvKHCj4d-fkOr4rqhYloJRwISgR7g";
 
         //TODO: asi nějak pořešit ten limit (2500 dotazů na den)
-        //TODO: možná rozdělit do více metod
         //TODO: problém https://developers.google.com/maps/terms 10.5 d)
-        public async Task<List<Result>> GetElevationResultsAsync(List<Location> locations)
+        public async Task<List<Result>> GetElevationResultsAsync(List<Location> locations) //TODO: static?
         {
-            List<Result> myResults = new List<Result>();
-            StringBuilder sbLocs = new StringBuilder();
+            List<Result> results = new List<Result>();
+
+            string requestUrl = CreateRequestUrl(locations); //TODO: pořešit kolik se vejde do jednoho requestu
+            using (var client = new HttpClient())
+            {
+                HttpResponseMessage response = await client.GetAsync(requestUrl);
+                if (response.IsSuccessStatusCode)
+                {
+                    string content = await response.Content.ReadAsStringAsync();
+                    results.AddRange(ParseContent(content));
+                }
+                else
+                {
+                    throw new ElevationProviderException($"{response.ReasonPhrase} - {response.RequestMessage}");
+                }   
+            }
+
+            return results;
+        }
+
+        private static string CreateRequestUrl(IReadOnlyCollection<Location> locations)
+        {
+            var sbLocs = new StringBuilder();
             int n = 0;
             foreach (var location in locations)
             {
-                sbLocs.AppendFormat(CultureInfo.InvariantCulture, "{0},{1}", location.lat, location.lng); //TODO: pořešit kolik se vejde do jednoho requestu
+                sbLocs.AppendFormat(CultureInfo.InvariantCulture, "{0},{1}", location.lat, location.lng); 
                 if (n < locations.Count - 1)
                 {
                     sbLocs.Append("|");
                 }
                 n++;
             }
-            string requestUrl = BASE_URL + string.Format("?key={0}&locations={1}", API_KEY, sbLocs.ToString());
-            using (var client = new HttpClient())
-            {
-                var response = await client.GetAsync(requestUrl);
-                var content = await response.Content.ReadAsStringAsync();
-                if (response.StatusCode == HttpStatusCode.OK)
-                {
-                    var xmlDocument = XDocument.Parse(content);
-                    if (xmlDocument.XPathSelectElement("ElevationResponse/status")?.Value == "OK")
-                    {
-                        var results = xmlDocument.XPathSelectElements("ElevationResponse/result");
-                        foreach (XElement result in results)
-                        {
-                            if (result == null) continue;
+            return $"{BASE_URL}?key={API_KEY}&locations={sbLocs}";
+        }
 
-                            string latitude = result.XPathSelectElement("location/lat")?.Value;
-                            string longtitude = result.XPathSelectElement("location/lng")?.Value;
-                            string elevation = result.XPathSelectElement("elevation")?.Value;
-                            string resolution = result.XPathSelectElement("resolution")?.Value;
-                            bool isLatParsed = double.TryParse(latitude, NumberStyles.Float, CultureInfo.InvariantCulture, out double lat);
-                            bool isLngParsed = double.TryParse(longtitude, NumberStyles.Float, CultureInfo.InvariantCulture, out double lng);
-                            bool isEleParsed = double.TryParse(elevation, NumberStyles.Float, CultureInfo.InvariantCulture, out double ele);
-                            bool isResParsed = double.TryParse(resolution, NumberStyles.Float, CultureInfo.InvariantCulture, out double res);
-                            if (isLatParsed && isLngParsed && isEleParsed && isResParsed)
-                            { 
-                                myResults.Add(new Result(lat, lng, ele, res));
-                            }
-                            else
-                            {
-                                throw new ElevationProviderException("Data couldnt be parsed: " + result); //TODO: tohle by možná měla bejt chyba do response
-                            }
-                        }
+        private static IEnumerable<Result> ParseContent(string content)
+        {
+            List<Result> results = new List<Result>();
+
+            XDocument xmlDocument = XDocument.Parse(content);
+            string status = xmlDocument.XPathSelectElement("ElevationResponse/status")?.Value;
+            if (status == "OK")
+            {
+                IEnumerable<XElement> responseResults = xmlDocument.XPathSelectElements("ElevationResponse/result");
+                foreach (XElement responseResult in responseResults)
+                {
+                    if (responseResult == null) continue;
+
+                    string latitude = responseResult.XPathSelectElement("location/lat")?.Value;
+                    string longtitude = responseResult.XPathSelectElement("location/lng")?.Value;
+                    string elevation = responseResult.XPathSelectElement("elevation")?.Value;
+                    string resolution = responseResult.XPathSelectElement("resolution")?.Value;
+
+                    bool isLatParsed = double.TryParse(latitude, NumberStyles.Float, CultureInfo.InvariantCulture, out double lat);
+                    bool isLngParsed = double.TryParse(longtitude, NumberStyles.Float, CultureInfo.InvariantCulture, out double lng);
+                    bool isEleParsed = double.TryParse(elevation, NumberStyles.Float, CultureInfo.InvariantCulture, out double ele);
+                    bool isResParsed = double.TryParse(resolution, NumberStyles.Float, CultureInfo.InvariantCulture, out double res);
+                    if (isLatParsed && isLngParsed && isEleParsed && isResParsed)
+                    {
+                        results.Add(new Result(lat, lng, ele, res));
                     }
                     else
                     {
-                        throw new ElevationProviderException("API call error: " + xmlDocument.XPathSelectElement("status")?.Value);
+                        throw new ElevationProviderException("Data could not be parsed: " + responseResult);
                     }
                 }
-                else
-                {
-                    throw new ElevationProviderException(string.Format("{0} - {1}", response.ReasonPhrase, response.RequestMessage));
-                }   
-            }
-
-            if (myResults.Count > 0) //TODO: to tady asi bejt nemusí
-            {
-                return myResults;
             }
             else
             {
-                return null;
+                throw new ElevationProviderException("API call error: " + status);
             }
+
+            return results;
         }
     }
 
     class SeznamElevationProvider
     {
-        const string BASE_URL = "https://api.mapy.cz/altitude";
-        const string SAMPLE_PAYLOAD = "yhECAWgLZ2V0QWx0aXR1ZGVYAVgCGAAAAAAAAC5AGAAAAAAAAElAOAEQ";
+        private const string BASE_URL = "https://api.mapy.cz/altitude";
+        private const string SAMPLE_PAYLOAD = "yhECAWgLZ2V0QWx0aXR1ZGVYAVgCGAAAAAAAAC5AGAAAAAAAAElAOAEQ";
+        private const string HEADER = "application/x-base64-frpc";
 
         //TODO: problém https://api.mapy.cz/#pact 3.4 a 4.5
         public async Task<List<Result>> GetElevationResultsAsync(List<Location> locations)
         {
-            List<Result> myResults = new List<Result>();
+            List<Result> results = new List<Result>();
 
             using (var client = new HttpClient())
             { 
-                foreach (var location in locations)
+                foreach (Location location in locations)
                 {
-                    var response = await client.PostAsync(BASE_URL, CreateContentWithPayload(location));
-                    var content = await response.Content.ReadAsStringAsync();
-                    //TODO: rozparsovat
+                    HttpResponseMessage response = await client.PostAsync(BASE_URL, CreateContentWithPayload(location));
+                    if (response.IsSuccessStatusCode)
+                    {
+                        string content = await response.Content.ReadAsStringAsync();
+                        results.Add(ParseContent(content));
+                    }
+                    else
+                    {
+                        throw new ElevationProviderException($"{response.ReasonPhrase} - {response.RequestMessage}");
+                    }
                 }
             }
-            return myResults;
+            return results;
         }
 
-        private HttpContent CreateContentWithPayload(Location location)
+        private static Result ParseContent(string content)
+        {
+            XDocument xmlDocument = XDocument.Parse(content);
+            string statusMessage = xmlDocument.XPathSelectElement("//name[contains(text(),'statusMessage')]/../value/string")?.Value;
+            if (statusMessage == "OK")
+            {
+                XElement geometryCode = xmlDocument.XPathSelectElement("//name[contains(text(),'geometryCode')]/../value/array/data/value/array/data");
+                string latitude = ((XElement)geometryCode?.LastNode)?.Value;
+                string longtitude = ((XElement)geometryCode?.FirstNode)?.Value;
+                string elevation = xmlDocument.XPathSelectElement("//name[contains(text(),'altitudeCode')]/../value/array/data/value/double")?.Value;
+                //string resolution = responseResult.XPathSelectElement("resolution")?.Value; //TODO: pořešit jakou má seznam teda přesnost
+
+                bool isLatParsed = double.TryParse(latitude, NumberStyles.Float, CultureInfo.InvariantCulture, out double lat);
+                bool isLngParsed = double.TryParse(longtitude, NumberStyles.Float, CultureInfo.InvariantCulture, out double lng);
+                bool isEleParsed = double.TryParse(elevation, NumberStyles.Float, CultureInfo.InvariantCulture, out double ele);
+                bool isResParsed = true;//double.TryParse(resolution, NumberStyles.Float, CultureInfo.InvariantCulture, out double res);
+                if (isLatParsed && isLngParsed && isEleParsed && isResParsed)
+                {
+                    return new Result(lat, lng, ele, 0);
+                }
+                else
+                {
+                    throw new ElevationProviderException("Data could not be parsed: " + xmlDocument);
+                }
+            }
+            else
+            {
+                throw new ElevationProviderException("API call error: " + statusMessage);
+            }
+        }
+
+        private static HttpContent CreateContentWithPayload(Location location)
         {
             return CreateContent(CreatePayload(location));
         }
 
-        private HttpContent CreateContent(byte[] payload)
+        private static HttpContent CreateContent(byte[] payload)
         {
             HttpContent content = new ByteArrayContent(payload);
-            content.Headers.ContentType = new MediaTypeHeaderValue("application/x-base64-frpc");
+            content.Headers.ContentType = new MediaTypeHeaderValue(HEADER);
             return content;
         }
 
-        private byte[] CreatePayload(Location location)
+        private static byte[] CreatePayload(Location location)
         {
             byte[] decodedPayload = Convert.FromBase64String(SAMPLE_PAYLOAD);
 
@@ -167,7 +194,20 @@ namespace AggregatedElevationService
                 decodedPayload[i] = byteArray[i - 31];
             }
 
-            return Encoding.ASCII.GetBytes(System.Convert.ToBase64String(decodedPayload));
+            return Encoding.ASCII.GetBytes(Convert.ToBase64String(decodedPayload));
+        }
+    }
+
+    class ElevationProviderException : Exception
+    {
+        public ElevationProviderException(string message) : base(message)
+        {
+
+        }
+
+        public ElevationProviderException(string message, Exception inner) : base(message, inner)
+        {
+
         }
     }
 }

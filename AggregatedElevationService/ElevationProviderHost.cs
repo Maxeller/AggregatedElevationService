@@ -20,8 +20,8 @@ namespace AggregatedElevationService
             string uri = incomingWebRequestContext.UriTemplateMatch.RequestUri.ToString();
             Console.WriteLine("{0}: Request (XmlRequest) to {1}", System.DateTime.Now, uri); //TODO: logování do souboru (asi i podrobnější)
 
-            var requestHandler = new RequestHandler(key, locations);
-            var elevationResponse = await requestHandler.HandleRequest();
+            var requestHandler = new RequestHandler();
+            ElevationResponse elevationResponse = await requestHandler.HandleRequest(key, locations);
 
             //Message response = Message.CreateMessage(MessageVersion.None, "*", googleElevation); //TODO: hybrid na ntb nefunguje
             //return response;
@@ -37,8 +37,8 @@ namespace AggregatedElevationService
             string uri = incomingWebRequestContext.UriTemplateMatch.RequestUri.ToString();
             Console.WriteLine("{0}: Request (JsonRequest) to {1}", System.DateTime.Now, uri);
 
-            RequestHandler requestHandler = new RequestHandler(key, locations);
-            var elevationResponse = await requestHandler.HandleRequest();
+            var requestHandler = new RequestHandler();
+            ElevationResponse elevationResponse = await requestHandler.HandleRequest(key, locations);
 
             return elevationResponse;
         }

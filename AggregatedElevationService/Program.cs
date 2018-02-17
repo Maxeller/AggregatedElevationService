@@ -47,8 +47,11 @@ namespace AggregatedElevationService
             };
             //GoogleElevationProvider google = new GoogleElevationProvider();
             //var a = await google.GetElevationResultsAsync(list);
-            SeznamElevationProvider seznam = new SeznamElevationProvider();
-            var a = await seznam.GetElevationResultsAsync(list);
+            //SeznamElevationProvider seznam = new SeznamElevationProvider();
+            //var a = await seznam.GetElevationResultsAsync(list);
+            //SeznamElevationProvider.ParseContent(File.ReadAllText(@"files/SeznamResponse.xml"));
+            var r = new RequestHandler();
+            await r.HandleRequest("klic", "50.482999,13.430489");
         }
 
         static void XmlSerializationTest()

@@ -7,24 +7,15 @@ namespace AggregatedElevationService
 {
     public class RequestHandler
     {
-        string key;
-        string locations;
-
-        public RequestHandler(string key, string locations)
+        public async Task<ElevationResponse> HandleRequest(string key, string locations)
         {
-            this.key = key;
-            this.locations = locations;
-        }
-
-        public async Task<ElevationResponse> HandleRequest()
-        {
-            if (!CheckApiKey())
+            if (!CheckApiKey(key))
             {
                 return new ElevationResponse("Invalid API key", null); //TODO: zkontrolovat
             }
 
-            var parsedLocations = ParseLocations();
-            var results = await GetElevation(parsedLocations);
+            List<Location> parsedLocations = ParseLocations(locations);
+            List<Result> results = await GetElevation(parsedLocations);
 
 
             ElevationResponse elevationResponse = new ElevationResponse("OK", results.ToArray());
@@ -32,21 +23,21 @@ namespace AggregatedElevationService
             return elevationResponse;
         }
 
-        private bool CheckApiKey()
+        private bool CheckApiKey(string key)
         {
             //TODO: dodělat
             return key == "klic";
         }
 
-        private List<Location> ParseLocations()
+        private List<Location> ParseLocations(string locations)
         {
             string[] locationsSplit = locations.Split('|'); //TODO: kontrola formátování
             List<Location> latLongs = new List<Location>();
             foreach (string l in locationsSplit)
             {
                 string[] locSplit = l.Split(',');
-                var latParsed = double.TryParse(locSplit[0], NumberStyles.Float, CultureInfo.InvariantCulture, out double lat);
-                var lonParsed = double.TryParse(locSplit[1], NumberStyles.Float, CultureInfo.InvariantCulture, out double lon);
+                bool latParsed = double.TryParse(locSplit[0], NumberStyles.Float, CultureInfo.InvariantCulture, out double lat);
+                bool lonParsed = double.TryParse(locSplit[1], NumberStyles.Float, CultureInfo.InvariantCulture, out double lon);
 
                 if (!(latParsed && lonParsed)) continue; //TODO: exception?
 
@@ -58,7 +49,7 @@ namespace AggregatedElevationService
 
                 if(!(latFormatted && lonFormatted)) continue; //TODO: exception?
 
-                Location loc = new Location(lat, lon);
+                var loc = new Location(lat, lon);
                 latLongs.Add(loc);
             }
 
@@ -67,12 +58,19 @@ namespace AggregatedElevationService
 
         private async Task<List<Result>> GetElevation(List<Location> locations) //TODO: dodělat
         {         
-            GoogleElevationProvider google = new GoogleElevationProvider();
+            var google = new GoogleElevationProvider();
+            var seznam = new SeznamElevationProvider();
+            List<Task<List<Result>>> tasks = new List<Task<List<Result>>>()
+            {
+                google.GetElevationResultsAsync(locations),
+                seznam.GetElevationResultsAsync(locations)
+            };
             List<Result> googleResults = null;
+            List<Result> seznamResults = null;
 
             try
             {
-                googleResults = await google.GetElevationResultsAsync(locations);
+                List<Result>[] a = await Task.WhenAll(tasks);
             }
             catch (Exception e)
             {
