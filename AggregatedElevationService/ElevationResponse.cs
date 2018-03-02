@@ -1,20 +1,20 @@
-﻿using System.Xml.Serialization;
+﻿using System.Collections.Generic;
+using System.Xml.Serialization;
 
 namespace AggregatedElevationService
 {
     public class ElevationResponse
     {
-        //[XmlElement(ElementName = "status")]
         public string status;
         [XmlElement]
-        public Result[] result; //TODO: může bejt tohle list (Kubera question from OON)
+        public List<Result> result;
 
         public ElevationResponse()
         {
             
         }
 
-        public ElevationResponse(string status, Result[] results)
+        public ElevationResponse(string status, List<Result> results)
         {
             this.status = status;
             this.result = results;
@@ -23,11 +23,8 @@ namespace AggregatedElevationService
 
     public class Result
     {
-        //[XmlElement(ElementName = "location")]
         public Location location;
-        //[XmlElement(ElementName = "elevation")]
         public double elevation;
-        //[XmlElement(ElementName = "resolution")]
         public double resolution;
 
         public Result()
@@ -52,9 +49,7 @@ namespace AggregatedElevationService
 
     public class Location
     {
-        //[XmlElement(ElementName = "lat")]
         public double lat;
-        //[XmlElement(ElementName = "lng")]
         public double lng;
 
         public Location()

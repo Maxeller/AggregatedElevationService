@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace AggregatedElevationService
@@ -18,7 +19,7 @@ namespace AggregatedElevationService
             List<Result> results = await GetElevation(parsedLocations);
 
 
-            ElevationResponse elevationResponse = new ElevationResponse("OK", results.ToArray());
+            ElevationResponse elevationResponse = new ElevationResponse("OK", results);
 
             return elevationResponse;
         }
@@ -58,26 +59,25 @@ namespace AggregatedElevationService
 
         private async Task<List<Result>> GetElevation(List<Location> locations) //TODO: dodělat
         {         
-            var google = new GoogleElevationProvider();
+            var google = new GoogleElevationProvider(); //TODO: tohle by možná mohlo bejt schovaný v ElevationProvider s tim, že se daj vybrat ty provideři
             var seznam = new SeznamElevationProvider();
             List<Task<List<Result>>> tasks = new List<Task<List<Result>>>()
             {
                 google.GetElevationResultsAsync(locations),
-                seznam.GetElevationResultsAsync(locations)
+                seznam.GetElevationResultsAsync(locations),
             };
-            List<Result> googleResults = null;
-            List<Result> seznamResults = null;
 
+            List<Result>[] results = null;
             try
             {
-                List<Result>[] a = await Task.WhenAll(tasks);
+                results = await Task.WhenAll(tasks);
             }
             catch (Exception e)
             {
                 Console.WriteLine(e);
             }
 
-            return googleResults;
+            return results[0].ToList();
         }
     }
 }

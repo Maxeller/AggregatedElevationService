@@ -9,22 +9,22 @@ namespace AggregatedElevationService
 {
     class Program
     {
-        const string URL = "http://localhost:8889/elevation";
+        private const string URL = "http://localhost:8889/elevation";
 
-        static void Main(string[] args)
+        private static void Main(string[] args)
         {
-            TestElevationProviders();
+            //TestElevationProviders();
             //XmlSerializationTest();
             //StartElevationService();
-            //TestDatabase();
+            TestDatabase();
             Console.ReadKey();
         }
 
-        static void StartElevationService()
+        private static void StartElevationService()
         {
-            WebHttpBinding binding = new WebHttpBinding();
-            WebServiceHost webServiceHost = new WebServiceHost(typeof(ElevationProviderHost));
-            webServiceHost.AddServiceEndpoint(typeof(ElevationProviderHost), binding, URL);
+            var binding = new WebHttpBinding();
+            var webServiceHost = new WebServiceHost(typeof(ElevationServiceHost));
+            webServiceHost.AddServiceEndpoint(typeof(ElevationServiceHost), binding, URL);
             webServiceHost.Open();
             Console.WriteLine("Listening on {0}", URL);
             Console.WriteLine("Press enter to stop service");
@@ -32,18 +32,20 @@ namespace AggregatedElevationService
             webServiceHost.Close();
         }
 
-        static void TestDatabase()
+        private static void TestDatabase()
         {
             PostgreConnector pgc = new PostgreConnector();
-            //pgc.LoadxyzFile(@"files/MOST64_5g.xyz");
-            pgc.LoadxyzFile(@"files/12-24-05.txt");
+            //pgc.InitializeDatabase();
+            pgc.LoadXyzFile(@"files/MOST64_5g.xyz");
+            //pgc.LoadxyzFile(@"files/12-24-05.txt");
         }
 
-        static async void TestElevationProviders()
+        private static async void TestElevationProviders()
         {
-            var list = new List<Location>
+            List<Location> list = new List<Location>
             {
-                new Location(50.482999f, 13.430489f)
+                new Location(50.482999f, 13.430489f),
+                new Location(39.7391536f, -104.9847034f)
             };
             //GoogleElevationProvider google = new GoogleElevationProvider();
             //var a = await google.GetElevationResultsAsync(list);
@@ -51,10 +53,11 @@ namespace AggregatedElevationService
             //var a = await seznam.GetElevationResultsAsync(list);
             //SeznamElevationProvider.ParseContent(File.ReadAllText(@"files/SeznamResponse.xml"));
             var r = new RequestHandler();
-            await r.HandleRequest("klic", "50.482999,13.430489");
+            var a = await r.HandleRequest("klic", "50.482999,13.430489|39.7391536,-104.9847034");
+            Console.WriteLine(a.SerializeObject());
         }
 
-        static void XmlSerializationTest()
+        private static void XmlSerializationTest()
         {
             Result[] results = new Result[2];
             List<Result> res = new List<Result>();
@@ -64,20 +67,20 @@ namespace AggregatedElevationService
             results[1] = r2;
             res.Add(r1);
             res.Add(r2);
-            ElevationResponse erPole = new ElevationResponse("OK", results);
-            ElevationResponse erList = new ElevationResponse("OK", res.ToArray());
+            ElevationResponse erPole = new ElevationResponse("OK", res);
+            //ElevationResponse erList = new ElevationResponse("OK", res.ToArray());
             Console.WriteLine(erPole.SerializeObject());
-            Console.WriteLine(erList.SerializeObject());
+            //Console.WriteLine(erList.SerializeObject());
         }
     }
 
-    static class Help
+    static class Helper
     {
         public static string SerializeObject<T>(this T toSerialize)
         {
-            XmlSerializer xmlSerializer = new XmlSerializer(toSerialize.GetType());
+            var xmlSerializer = new XmlSerializer(toSerialize.GetType());
 
-            using (StringWriter textWriter = new StringWriter())
+            using (var textWriter = new StringWriter())
             {
                 xmlSerializer.Serialize(textWriter, toSerialize);
                 return textWriter.ToString();

@@ -8,12 +8,12 @@ using System.Threading.Tasks;
 namespace AggregatedElevationService
 {
     [ServiceContract]
-    class ElevationProviderHost
+    class ElevationServiceHost
     {
         [OperationContract()]
-        [WebGet(UriTemplate = "/xml?key={key}&locations={locations}", ResponseFormat = WebMessageFormat.Xml)]
+        [WebGet(UriTemplate = "/xml?key={key}&locations={locations}", ResponseFormat = WebMessageFormat.Xml)] //TODO: možná sem přidat ještě &source={source} pro testování
         [XmlSerializerFormat()]
-        public async Task<ElevationResponse> XmlRequest(string key, string locations)
+        public async Task<ElevationResponse> XmlRequest(string key, string locations) 
         {
             WebOperationContext webOperationContext = WebOperationContext.Current;
             IncomingWebRequestContext incomingWebRequestContext = webOperationContext.IncomingRequest; //TODO: asi vyřešit tenhle possible NullReferenceException
@@ -23,8 +23,6 @@ namespace AggregatedElevationService
             var requestHandler = new RequestHandler();
             ElevationResponse elevationResponse = await requestHandler.HandleRequest(key, locations);
 
-            //Message response = Message.CreateMessage(MessageVersion.None, "*", googleElevation); //TODO: hybrid na ntb nefunguje
-            //return response;
             return elevationResponse;
         }
 
