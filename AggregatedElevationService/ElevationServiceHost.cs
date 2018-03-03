@@ -10,6 +10,8 @@ namespace AggregatedElevationService
     [ServiceContract]
     class ElevationServiceHost
     {
+        private static NLog.Logger logger = NLog.LogManager.GetCurrentClassLogger();
+
         [OperationContract()]
         [WebGet(UriTemplate = "/xml?key={key}&locations={locations}", ResponseFormat = WebMessageFormat.Xml)] //TODO: možná sem přidat ještě &source={source} pro testování
         [XmlSerializerFormat()]
@@ -18,10 +20,22 @@ namespace AggregatedElevationService
             WebOperationContext webOperationContext = WebOperationContext.Current;
             IncomingWebRequestContext incomingWebRequestContext = webOperationContext.IncomingRequest; //TODO: asi vyřešit tenhle possible NullReferenceException
             string uri = incomingWebRequestContext.UriTemplateMatch.RequestUri.ToString();
-            Console.WriteLine("{0}: Request (XmlRequest) to {1}", System.DateTime.Now, uri); //TODO: logování do souboru (asi i podrobnější)
+            Console.WriteLine("{0}: Request (XmlRequest) to {1}", System.DateTime.Now, uri);
+            logger.Info("Request (XmlRequest) to {0}", uri);
 
+            var elevationResponse = new ElevationResponse();
             var requestHandler = new RequestHandler();
-            ElevationResponse elevationResponse = await requestHandler.HandleRequest(key, locations);
+            try
+            {
+                elevationResponse = await requestHandler.HandleRequest(key, locations);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                logger.Error(e);
+                elevationResponse.status = e.Message;
+
+            }
 
             return elevationResponse;
         }
@@ -34,21 +48,37 @@ namespace AggregatedElevationService
             IncomingWebRequestContext incomingWebRequestContext = webOperationContext.IncomingRequest;
             string uri = incomingWebRequestContext.UriTemplateMatch.RequestUri.ToString();
             Console.WriteLine("{0}: Request (JsonRequest) to {1}", System.DateTime.Now, uri);
+            logger.Info("Request (JsonRequest) to {0}", uri);
 
+            var elevationResponse = new ElevationResponse();
             var requestHandler = new RequestHandler();
-            ElevationResponse elevationResponse = await requestHandler.HandleRequest(key, locations);
+            try
+            {
+                elevationResponse = await requestHandler.HandleRequest(key, locations);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                logger.Error(e);
+                elevationResponse.status = e.Message;
+
+            }
 
             return elevationResponse;
         }
 
+        
         [OperationContract()]
         [WebGet(UriTemplate = "*")] //TODO: tohle smazat nebo odeslat nějakou chybovou zprávu
-        Message AllURIs(Message msg)
+        public ElevationResponse OtherUris(Message msg)
         {
-            Console.WriteLine("{0}: Request caugth by AllURIs", System.DateTime.Now);
             WebOperationContext webOperationContext = WebOperationContext.Current;
             IncomingWebRequestContext incomingWebRequestContext = webOperationContext.IncomingRequest;
             string uri = incomingWebRequestContext.UriTemplateMatch.RequestUri.ToString();
+            Console.WriteLine("{0}: Request caugth by OtherUris: {1}", System.DateTime.Now, uri);
+            logger.Info("Request caugth by AllURIs: {0}", uri);
+
+            /*
             Console.WriteLine("{0}: Request to {1}", System.DateTime.Now, uri);
             if (incomingWebRequestContext.Method != "GET")
             {
@@ -73,7 +103,9 @@ namespace AggregatedElevationService
             Message response = Message.CreateMessage(MessageVersion.None, "*", "Odpoved");
             OutgoingWebRequestContext outgoingWebRequestContext = webOperationContext.OutgoingRequest;
             outgoingWebRequestContext.Headers.Add("MyCustomHeader", "Hodnota");
-            return response;
+            */
+
+            return new ElevationResponse(ElevationResponses.KO, null);
         }
     }
 }

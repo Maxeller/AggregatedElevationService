@@ -8,6 +8,8 @@ namespace AggregatedElevationService
 {
     public class RequestHandler
     {
+        private static NLog.Logger logger = NLog.LogManager.GetCurrentClassLogger();
+
         private const double MAX_DISTANCE = 2.0d; //TODO: určit jestli je to dostatečná vzálenost
 
         public async Task<ElevationResponse> HandleRequest(string key, string locations)
@@ -15,23 +17,26 @@ namespace AggregatedElevationService
             var (existingUser, premiumUser) = CheckApiKey(key);
             if (!existingUser)
             {
-                return new ElevationResponse(ElevationResponses.INVALID_KEY, null); //TODO: zkontrolovat
+                return new ElevationResponse(ElevationResponses.INVALID_KEY, null);
             }
 
             IEnumerable<Location> parsedLocations = ParseLocations(locations);
             var elevationResponse = new ElevationResponse(parsedLocations);
             List<Location> locsWithoutElevation = new List<Location>();
-            var pgc = new PostgreConnector();
+            var pgc = new PostgreDbConnector();
             foreach (Result result in elevationResponse.result)
             {
-                double elevation = -1, resolution = -1, distance = -1;
+                double elevation = -1;
+                double resolution = -1;
+                double distance = -1;
                 try
                 {
                     (elevation, resolution, distance) = pgc.GetClosestPoint(result.location, premiumUser);
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine(e);
+                    Console.WriteLine(e.Message);
+                    logger.Error(e);
                 }
                 
                 if (distance <= MAX_DISTANCE && distance >= 0)
@@ -79,7 +84,7 @@ namespace AggregatedElevationService
                 bool latParsed = double.TryParse(locSplit[0], NumberStyles.Float, CultureInfo.InvariantCulture, out double lat);
                 bool lonParsed = double.TryParse(locSplit[1], NumberStyles.Float, CultureInfo.InvariantCulture, out double lon);
 
-                if (!(latParsed && lonParsed)) continue; //TODO: exception?
+                if (!(latParsed && lonParsed)) throw new ElevationProviderException("Location could not be parsed");
 
                 //Hodnoty jsou ve formátu WGS 84
                 //Kontrola jestli je latitude (zeměpisná šírka) v rozsahu -90 až 90
@@ -87,7 +92,7 @@ namespace AggregatedElevationService
                 //Kontrola jestli je longitude (zeměpisná délka) v rozsahu -180 až 180
                 bool lonFormatted = Math.Abs(lon) <= 180;
 
-                if(!(latFormatted && lonFormatted)) continue; //TODO: exception?
+                if(!(latFormatted && lonFormatted)) throw new ElevationProviderException("Location is not formatted properly");
 
                 var loc = new Location(lat, lon);
                 latLongs.Add(loc);
@@ -113,7 +118,8 @@ namespace AggregatedElevationService
             }
             catch (Exception e)
             {
-                Console.WriteLine(e); //TODO: log
+                Console.WriteLine(e.Message);
+                logger.Error(e);
             }
 
             if (elevationResults == null) throw new ElevationProviderException("Elevation results were empty");
@@ -124,12 +130,20 @@ namespace AggregatedElevationService
             //TODO: určit, kterej je nejlepší
 
             //Uložení hodnot do databáze
-            var pgc = new PostgreConnector();
-            int rowsAddedGoogle = pgc.InsertResultsAsync(googleResults, Source.Google);
-            int rowsAddedSeznam = pgc.InsertResultsAsync(seznamResults, Source.Seznam);
+            var pgc = new PostgreDbConnector();
+            try
+            {
+                int rowsAddedGoogle = pgc.InsertResultsAsync(googleResults, Source.Google);
+                int rowsAddedSeznam = pgc.InsertResultsAsync(seznamResults, Source.Seznam);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+                logger.Error(e);
+            }
+            
 
             return googleResults; //TODO: zatim vrací jen věci od googlu
-
         }
     }
 }

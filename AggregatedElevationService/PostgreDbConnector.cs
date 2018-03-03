@@ -1,10 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel.Design;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
-using System.ServiceModel.Channels;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql;
@@ -12,23 +10,15 @@ using NpgsqlTypes;
 
 namespace AggregatedElevationService
 {
-    interface IDatabaseConnector
+    class PostgreDbConnector
     {
+        private static NLog.Logger logger = NLog.LogManager.GetCurrentClassLogger();
 
-    }
-
-    class DatabaseConnector
-    {
-
-    }
-
-    class PostgreConnector //TODO: přejmenovat
-    {
         private const string CONNECTION_STRING = "Host=localhost;Username=postgres;Password=root;Database=test"; //TODO: změnit databázi a asi dát do configu
         private const short SRID_SJTSK = 5514;
         private const short SRID_WGS84 = 4326;
 
-        public PostgreConnector()
+        public PostgreDbConnector()
         {
 
         }
@@ -128,7 +118,8 @@ namespace AggregatedElevationService
                         }
                         catch (Exception e)
                         {
-                            Console.WriteLine(e);
+                            Console.WriteLine(e.Message);
+                            logger.Error(e);
                         }
                     }
                 }   
@@ -165,7 +156,8 @@ namespace AggregatedElevationService
                             }
                             catch (Exception e)
                             {
-                                Console.WriteLine(e);
+                                Console.WriteLine(e.Message);
+                                logger.Error(e);
                             }
                         }
                     }
@@ -207,7 +199,8 @@ namespace AggregatedElevationService
                         }
                         catch (Exception e)
                         {
-                            Console.WriteLine(e);
+                            Console.WriteLine(e.Message);
+                            logger.Error(e);
                         }
                     }
                     if (rowCount == 100) break; //TODO: smazat
@@ -249,7 +242,8 @@ namespace AggregatedElevationService
                         }
                         catch (Exception e)
                         {
-                            Console.WriteLine(e);
+                            Console.WriteLine(e.Message);
+                            logger.Error(e);
                         }
                     }
                 }
@@ -263,8 +257,10 @@ namespace AggregatedElevationService
             var sr = new StreamReader(filepath);
             string line;
             List<Xyz> xyzs = new List<Xyz>();
+            int lineNumber = 0;
             while ((line = sr.ReadLine()) != null)
             {
+                lineNumber++;
                 if (line.Contains("  "))
                 {
                     line = line.Replace("  ", "\t");
@@ -282,8 +278,9 @@ namespace AggregatedElevationService
                     out double y);
                 bool zParsed = double.TryParse(lineSplit[2], NumberStyles.Float, CultureInfo.InvariantCulture,
                     out double z);
-                if (xParsed && yParsed && zParsed) //TODO: log, že se asi něco nerozparsovalo
+                if (xParsed && yParsed && zParsed)
                 {
+                    logger.Warn("Line no {0} could not be parsed. Line: {1}", lineNumber, line);
                     xyzs.Add(new Xyz(x, y, z));
                 }
             }
