@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Xml.Serialization;
 
 namespace AggregatedElevationService
@@ -18,6 +19,15 @@ namespace AggregatedElevationService
         {
             this.status = status;
             this.result = results;
+        }
+
+        public ElevationResponse(IEnumerable<Location> locations)
+        {
+            result = new List<Result>();
+            foreach (Location location in locations)
+            {
+                result.Add(new Result(location, -1, -1));
+            }
         }
     }
 
@@ -47,7 +57,7 @@ namespace AggregatedElevationService
         }
     }
 
-    public class Location
+    public class Location : IEquatable<Location>
     {
         public double lat;
         public double lng;
@@ -62,5 +72,30 @@ namespace AggregatedElevationService
             this.lat = latitude;
             this.lng = longtitude;
         }
+
+        public override bool Equals(object obj)
+        {
+            return Equals(obj as Location);
+        }
+
+        public bool Equals(Location other)
+        {
+            return other != null && lat == other.lat && lng == other.lng;
+        }
+
+        public override int GetHashCode()
+        {
+            int hashCode = 2124363670;
+            hashCode = hashCode * -1521134295 + lat.GetHashCode();
+            hashCode = hashCode * -1521134295 + lng.GetHashCode();
+            return hashCode;
+        }
+    }
+
+    public static class ElevationResponses
+    {
+        public const string OK = "OK";
+        public const string KO = "KO";
+        public const string INVALID_KEY = "Invalid API key";
     }
 }

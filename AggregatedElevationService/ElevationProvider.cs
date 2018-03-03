@@ -23,7 +23,7 @@ namespace AggregatedElevationService
     class GoogleElevationProvider
     {
         private const string BASE_URL = "https://maps.googleapis.com/maps/api/elevation/xml";
-        private const string API_KEY = "AIzaSyBXNtwvKHCj4d-fkOr4rqhYloJRwISgR7g";
+        private const string API_KEY = "AIzaSyBXNtwvKHCj4d-fkOr4rqhYloJRwISgR7g"; //TODO: asi do konfiguráku
 
         //TODO: asi nějak pořešit ten limit (2500 dotazů na den)
         //TODO: problém https://developers.google.com/maps/terms 10.5 d)
@@ -53,7 +53,7 @@ namespace AggregatedElevationService
         {
             var sbLocs = new StringBuilder();
             int n = 0;
-            foreach (var location in locations)
+            foreach (Location location in locations)
             {
                 sbLocs.AppendFormat(CultureInfo.InvariantCulture, "{0},{1}", location.lat, location.lng); 
                 if (n < locations.Count - 1)
@@ -113,7 +113,7 @@ namespace AggregatedElevationService
         private const string HEADER = "application/x-base64-frpc";
 
         //TODO: problém https://api.mapy.cz/#pact 3.4 a 4.5
-        public async Task<List<Result>> GetElevationResultsAsync(List<Location> locations)
+        public async Task<List<Result>> GetElevationResultsAsync(IEnumerable<Location> locations)
         {
             List<Result> results = new List<Result>();
 
@@ -146,7 +146,7 @@ namespace AggregatedElevationService
                 string latitude = ((XElement)geometryCode?.LastNode)?.Value;
                 string longtitude = ((XElement)geometryCode?.FirstNode)?.Value;
                 string elevation = xmlDocument.XPathSelectElement("//name[contains(text(),'altitudeCode')]/../value/array/data/value/double")?.Value;
-                //string resolution = responseResult.XPathSelectElement("resolution")?.Value; //TODO: pořešit jakou má seznam teda přesnost
+                //string resolution = responseResult.XPathSelectElement("resolution")?.Value; 
 
                 bool isLatParsed = double.TryParse(latitude, NumberStyles.Float, CultureInfo.InvariantCulture, out double lat);
                 bool isLngParsed = double.TryParse(longtitude, NumberStyles.Float, CultureInfo.InvariantCulture, out double lng);
@@ -154,7 +154,7 @@ namespace AggregatedElevationService
                 bool isResParsed = true;//double.TryParse(resolution, NumberStyles.Float, CultureInfo.InvariantCulture, out double res);
                 if (isLatParsed && isLngParsed && isEleParsed && isResParsed)
                 {
-                    return new Result(lat, lng, ele, 0);
+                    return new Result(lat, lng, ele, 1); //TODO: pořešit jakou má seznam teda přesnost
                 }
                 else
                 {

@@ -8,29 +8,68 @@ namespace AggregatedElevationService
 {
     public class RequestHandler
     {
+        private const double MAX_DISTANCE = 2.0d; //TODO: určit jestli je to dostatečná vzálenost
+
         public async Task<ElevationResponse> HandleRequest(string key, string locations)
         {
-            if (!CheckApiKey(key))
+            var (existingUser, premiumUser) = CheckApiKey(key);
+            if (!existingUser)
             {
-                return new ElevationResponse("Invalid API key", null); //TODO: zkontrolovat
+                return new ElevationResponse(ElevationResponses.INVALID_KEY, null); //TODO: zkontrolovat
             }
 
-            List<Location> parsedLocations = ParseLocations(locations);
-            List<Result> results = await GetElevation(parsedLocations);
+            IEnumerable<Location> parsedLocations = ParseLocations(locations);
+            var elevationResponse = new ElevationResponse(parsedLocations);
+            List<Location> locsWithoutElevation = new List<Location>();
+            var pgc = new PostgreConnector();
+            foreach (Result result in elevationResponse.result)
+            {
+                double elevation = -1, resolution = -1, distance = -1;
+                try
+                {
+                    (elevation, resolution, distance) = pgc.GetClosestPoint(result.location, premiumUser);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e);
+                }
+                
+                if (distance <= MAX_DISTANCE && distance >= 0)
+                {
+                    result.elevation = elevation;
+                    result.resolution = resolution;
+                }
+                else
+                {
+                    locsWithoutElevation.Add(result.location);
+                }
+            }
 
+            if (locsWithoutElevation.Count == 0)
+            {
+                elevationResponse.status = ElevationResponses.OK;
+                return elevationResponse;
+            }
 
-            ElevationResponse elevationResponse = new ElevationResponse("OK", results);
-
+            List<Result> providerResults = await GetElevation(locsWithoutElevation);
+            foreach (Result result in elevationResponse.result)
+            {
+                if (result.elevation != -1) continue;
+                Result providerResult = providerResults.Find(r => r.location.Equals(result.location));
+                result.elevation = providerResult.elevation;
+                result.resolution = providerResult.resolution;
+            }
+            elevationResponse.status = ElevationResponses.OK;
             return elevationResponse;
         }
 
-        private bool CheckApiKey(string key)
+        private static (bool existingUser, bool premiumUser) CheckApiKey(string key)
         {
             //TODO: dodělat
-            return key == "klic";
+            return (key == "klic" || key == "premium", key == "premium");
         }
 
-        private List<Location> ParseLocations(string locations)
+        private static IEnumerable<Location> ParseLocations(string locations)
         {
             string[] locationsSplit = locations.Split('|'); //TODO: kontrola formátování
             List<Location> latLongs = new List<Location>();
@@ -57,27 +96,40 @@ namespace AggregatedElevationService
             return latLongs;
         }
 
-        private async Task<List<Result>> GetElevation(List<Location> locations) //TODO: dodělat
+        private async Task<List<Result>> GetElevation(List<Location> locations)
         {         
             var google = new GoogleElevationProvider(); //TODO: tohle by možná mohlo bejt schovaný v ElevationProvider s tim, že se daj vybrat ty provideři
             var seznam = new SeznamElevationProvider();
-            List<Task<List<Result>>> tasks = new List<Task<List<Result>>>()
+            List<Task<List<Result>>> elevationTasks = new List<Task<List<Result>>>()
             {
                 google.GetElevationResultsAsync(locations),
                 seznam.GetElevationResultsAsync(locations),
             };
 
-            List<Result>[] results = null;
+            List<Result>[] elevationResults = null;
             try
             {
-                results = await Task.WhenAll(tasks);
+                elevationResults = await Task.WhenAll(elevationTasks);
             }
             catch (Exception e)
             {
-                Console.WriteLine(e);
+                Console.WriteLine(e); //TODO: log
             }
 
-            return results[0].ToList();
+            if (elevationResults == null) throw new ElevationProviderException("Elevation results were empty");
+
+            List<Result> googleResults = elevationResults[0].ToList();
+            List<Result> seznamResults = elevationResults[1].ToList();
+
+            //TODO: určit, kterej je nejlepší
+
+            //Uložení hodnot do databáze
+            var pgc = new PostgreConnector();
+            int rowsAddedGoogle = pgc.InsertResultsAsync(googleResults, Source.Google);
+            int rowsAddedSeznam = pgc.InsertResultsAsync(seznamResults, Source.Seznam);
+
+            return googleResults; //TODO: zatim vrací jen věci od googlu
+
         }
     }
 }
