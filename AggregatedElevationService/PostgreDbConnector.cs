@@ -280,8 +280,11 @@ namespace AggregatedElevationService
                     out double z);
                 if (xParsed && yParsed && zParsed)
                 {
-                    logger.Warn("Line no {0} could not be parsed. Line: {1}", lineNumber, line);
                     xyzs.Add(new Xyz(x, y, z));
+                }
+                else
+                {
+                    logger.Warn("Line no {0} could not be parsed. Line: {1}", lineNumber, line);
                 }
             }
             sr.Close();

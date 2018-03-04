@@ -23,46 +23,54 @@ namespace AggregatedElevationService
     class GoogleElevationProvider
     {
         private const string BASE_URL = "https://maps.googleapis.com/maps/api/elevation/xml";
+        private const short URL_LENGTH_LIMIT = 8192;
+        private const byte AVG_LENGTH = 20;
         private const string API_KEY = "AIzaSyBXNtwvKHCj4d-fkOr4rqhYloJRwISgR7g"; //TODO: asi do konfiguráku
 
         //TODO: asi nějak pořešit ten limit (2500 dotazů na den)
         //TODO: problém https://developers.google.com/maps/terms 10.5 d)
-        public async Task<List<Result>> GetElevationResultsAsync(List<Location> locations) //TODO: static?
+        public async Task<List<Result>> GetElevationResultsAsync(IEnumerable<Location> locations) //TODO: static?
         {
             List<Result> results = new List<Result>();
 
-            string requestUrl = CreateRequestUrl(locations); //TODO: pořešit kolik se vejde do jednoho requestu
-            using (var client = new HttpClient())
+            List<string> requestUrls = CreateRequestUrl(locations);
+            foreach (string requestUrl in requestUrls)
             {
-                HttpResponseMessage response = await client.GetAsync(requestUrl);
-                if (response.IsSuccessStatusCode)
+                using (var client = new HttpClient())
                 {
-                    string content = await response.Content.ReadAsStringAsync();
-                    results.AddRange(ParseContent(content));
+                    HttpResponseMessage response = await client.GetAsync(requestUrl);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        string content = await response.Content.ReadAsStringAsync();
+                        results.AddRange(ParseContent(content));
+                    }
+                    else
+                    {
+                        throw new ElevationProviderException($"{response.ReasonPhrase} - {response.RequestMessage}");
+                    }
                 }
-                else
-                {
-                    throw new ElevationProviderException($"{response.ReasonPhrase} - {response.RequestMessage}");
-                }   
             }
-
             return results;
         }
 
-        private static string CreateRequestUrl(IReadOnlyCollection<Location> locations)
+        private static List<string> CreateRequestUrl(IEnumerable<Location> locations)
         {
+            List<string> urls = new List<string>();
             var sbLocs = new StringBuilder();
-            int n = 0;
             foreach (Location location in locations)
             {
                 sbLocs.AppendFormat(CultureInfo.InvariantCulture, "{0},{1}", location.lat, location.lng); 
-                if (n < locations.Count - 1)
+                sbLocs.Append("|");
+                if (sbLocs.Length + AVG_LENGTH >= URL_LENGTH_LIMIT)
                 {
-                    sbLocs.Append("|");
+                    sbLocs.Remove(sbLocs.Length - 1, 1);
+                    urls.Add($"{BASE_URL}?key={API_KEY}&locations={sbLocs}");
+                    sbLocs.Clear();
                 }
-                n++;
             }
-            return $"{BASE_URL}?key={API_KEY}&locations={sbLocs}";
+            sbLocs.Remove(sbLocs.Length - 1, 1);
+            urls.Add($"{BASE_URL}?key={API_KEY}&locations={sbLocs}");
+            return urls;
         }
 
         private static IEnumerable<Result> ParseContent(string content)
