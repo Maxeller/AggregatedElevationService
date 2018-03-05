@@ -491,7 +491,7 @@
         </xs:attribute>
         <xs:attribute name="includeSourceInfo" type="xs:boolean">
           <xs:annotation>
-            <xs:documentation>Indicates whether to include source info (file name and line number) in the information sent over the network.</xs:documentation>
+            <xs:documentation>Indicates whether to include Source info (file name and line number) in the information sent over the network.</xs:documentation>
           </xs:annotation>
         </xs:attribute>
         <xs:attribute name="includeNLogData" type="xs:boolean">
@@ -1010,7 +1010,7 @@
           <xs:element name="eventId" minOccurs="0" maxOccurs="1" type="Layout" />
           <xs:element name="log" minOccurs="0" maxOccurs="1" type="xs:string" />
           <xs:element name="machineName" minOccurs="0" maxOccurs="1" type="xs:string" />
-          <xs:element name="source" minOccurs="0" maxOccurs="1" type="Layout" />
+          <xs:element name="Source" minOccurs="0" maxOccurs="1" type="Layout" />
           <xs:element name="onOverflow" minOccurs="0" maxOccurs="1" type="NLog.Targets.EventLogTargetOverflowAction" />
           <xs:element name="entryType" minOccurs="0" maxOccurs="1" type="Layout" />
           <xs:element name="maxKilobytes" minOccurs="0" maxOccurs="1" type="xs:long" />
@@ -1047,7 +1047,7 @@
             <xs:documentation>Name of the machine on which Event Log service is running.</xs:documentation>
           </xs:annotation>
         </xs:attribute>
-        <xs:attribute name="source" type="SimpleLayoutAttribute">
+        <xs:attribute name="Source" type="SimpleLayoutAttribute">
           <xs:annotation>
             <xs:documentation>Value to be used as the event Source.</xs:documentation>
           </xs:annotation>
@@ -2126,7 +2126,7 @@
         </xs:attribute>
         <xs:attribute name="includeSourceInfo" type="xs:boolean">
           <xs:annotation>
-            <xs:documentation>Indicates whether to include source info (file name and line number) in the information sent over the network.</xs:documentation>
+            <xs:documentation>Indicates whether to include Source info (file name and line number) in the information sent over the network.</xs:documentation>
           </xs:annotation>
         </xs:attribute>
         <xs:attribute name="includeNLogData" type="xs:boolean">
@@ -2551,7 +2551,7 @@
         </xs:attribute>
         <xs:attribute name="escapeDataRfc3986" type="xs:boolean">
           <xs:annotation>
-            <xs:documentation>Value whether escaping be done according to Rfc3986 (Supports Internationalized Resource Identifiers - IRIs)</xs:documentation>
+            <xs:documentation>Value whether escaping be done according to Rfc3986 (Supports Internationalized ReSource Identifiers - IRIs)</xs:documentation>
           </xs:annotation>
         </xs:attribute>
         <xs:attribute name="methodName" type="xs:string">

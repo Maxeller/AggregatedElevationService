@@ -133,8 +133,8 @@ namespace AggregatedElevationService
             var pgc = new PostgreDbConnector();
             try
             {
-                int rowsAddedGoogle = pgc.InsertResultsAsync(googleResults, Source.Google);
-                int rowsAddedSeznam = pgc.InsertResultsAsync(seznamResults, Source.Seznam);
+                int rowsAddedGoogle = pgc.InsertResultsParallel(googleResults, Source.Google);
+                int rowsAddedSeznam = pgc.InsertResultsParallel(seznamResults, Source.Seznam);
             }
             catch (Exception e)
             {

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Globalization;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -25,7 +26,7 @@ namespace AggregatedElevationService
         private const string BASE_URL = "https://maps.googleapis.com/maps/api/elevation/xml";
         private const short URL_LENGTH_LIMIT = 8192;
         private const byte AVG_LENGTH = 20;
-        private const string API_KEY = "AIzaSyBXNtwvKHCj4d-fkOr4rqhYloJRwISgR7g"; //TODO: asi do konfiguráku
+        private static readonly string API_KEY = ConfigurationManager.AppSettings["google_elevation_api"];
 
         //TODO: asi nějak pořešit ten limit (2500 dotazů na den)
         //TODO: problém https://developers.google.com/maps/terms 10.5 d)

@@ -12,7 +12,7 @@ namespace AggregatedElevationService
         private static NLog.Logger logger = NLog.LogManager.GetCurrentClassLogger();
 
         [OperationContract()]
-        [WebGet(UriTemplate = "/xml?key={key}&locations={locations}", ResponseFormat = WebMessageFormat.Xml)] //TODO: možná sem přidat ještě &source={source} pro testování
+        [WebGet(UriTemplate = "/xml?key={key}&locations={locations}", ResponseFormat = WebMessageFormat.Xml)] //TODO: možná sem přidat ještě &Source={Source} pro testování
         [XmlSerializerFormat()]
         public async Task<ElevationResponse> XmlRequest(string key, string locations) 
         {
