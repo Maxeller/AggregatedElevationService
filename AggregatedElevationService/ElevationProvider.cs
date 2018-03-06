@@ -11,9 +11,9 @@ using System.Xml.XPath;
 
 namespace AggregatedElevationService
 {
-    interface IElevationProvider //TODO: dodělat nebo smazat
+    interface IElevationProvider
     {
-
+        Task<List<Result>> GetElevationResultsAsync(IEnumerable<Location> locations);
     }
 
     class ElevationProvider //TODO: dodělat nebo smazat
@@ -21,7 +21,7 @@ namespace AggregatedElevationService
 
     }
 
-    class GoogleElevationProvider
+    class GoogleElevationProvider : IElevationProvider
     {
         private const string BASE_URL = "https://maps.googleapis.com/maps/api/elevation/xml";
         private const short URL_LENGTH_LIMIT = 8192;
@@ -115,7 +115,7 @@ namespace AggregatedElevationService
         }
     }
 
-    class SeznamElevationProvider
+    class SeznamElevationProvider : IElevationProvider
     {
         private const string BASE_URL = "https://api.mapy.cz/altitude";
         private const string SAMPLE_PAYLOAD = "yhECAWgLZ2V0QWx0aXR1ZGVYAVgCGAAAAAAAAC5AGAAAAAAAAElAOAEQ";

@@ -68,7 +68,7 @@ namespace AggregatedElevationService
 
         
         [OperationContract()]
-        [WebGet(UriTemplate = "*")] //TODO: tohle smazat nebo odeslat nějakou chybovou zprávu
+        [WebGet(UriTemplate = "*")]
         public ElevationResponse OtherUris(Message msg)
         {
             WebOperationContext webOperationContext = WebOperationContext.Current;
@@ -76,33 +76,6 @@ namespace AggregatedElevationService
             string uri = incomingWebRequestContext.UriTemplateMatch.RequestUri.ToString();
             Console.WriteLine("{0}: Request caugth by OtherUris: {1}", System.DateTime.Now, uri);
             logger.Info("Request caugth by AllURIs: {0}", uri);
-
-            /*
-            Console.WriteLine("{0}: Request to {1}", System.DateTime.Now, uri);
-            if (incomingWebRequestContext.Method != "GET")
-            {
-                Console.WriteLine("{0}: Incoming Message {1} with method of {2}", System.DateTime.Now,
-                    msg.GetReaderAtBodyContents().ReadOuterXml(), incomingWebRequestContext.Method);
-            }
-            else
-            {
-                Console.WriteLine("{0}: GET Req - no message in body", System.DateTime.Now);
-            }
-            NameValueCollection query = incomingWebRequestContext.UriTemplateMatch.QueryParameters;
-            if (query.Count != 0)
-            {
-                Console.WriteLine("QueryString:");
-                var enumerator = query.GetEnumerator();
-                while (enumerator.MoveNext())
-                {
-                    string name = enumerator.Current.ToString();
-                    Console.WriteLine("{0} = {1}", name, query[name]);
-                }
-            }
-            Message response = Message.CreateMessage(MessageVersion.None, "*", "Odpoved");
-            OutgoingWebRequestContext outgoingWebRequestContext = webOperationContext.OutgoingRequest;
-            outgoingWebRequestContext.Headers.Add("MyCustomHeader", "Hodnota");
-            */
 
             return new ElevationResponse(ElevationResponses.KO, null);
         }

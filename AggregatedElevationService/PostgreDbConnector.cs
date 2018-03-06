@@ -21,9 +21,6 @@ namespace AggregatedElevationService
         private static readonly string DB_DATABASE = ConfigurationManager.AppSettings["db_database"];
         private static readonly string CONNECTION_STRING = $"Host={DB_HOST};Username={DB_USERNAME};Password={DB_PASSWORD};Database={DB_DATABASE}";
 
-        private const short SRID_SJTSK = 5514;
-        private const short SRID_WGS84 = 4326;
-
         public PostgreDbConnector()
         {
             
@@ -101,7 +98,7 @@ namespace AggregatedElevationService
                         "ORDER BY Distance LIMIT 1";
                     cmd.Parameters.AddWithValue("x", NpgsqlDbType.Double, longtitude);
                     cmd.Parameters.AddWithValue("y", NpgsqlDbType.Double, latitude);
-                    cmd.Parameters.AddWithValue("wgs84", NpgsqlDbType.Smallint, SRID_WGS84);
+                    cmd.Parameters.AddWithValue("wgs84", NpgsqlDbType.Smallint, SRID.WGS84);
                     if (!premium) cmd.Parameters.AddWithValue("file", NpgsqlDbType.Enum, Source.File);
                     cmd.Prepare();
                     using (NpgsqlDataReader reader = cmd.ExecuteReader())
@@ -139,7 +136,7 @@ namespace AggregatedElevationService
                         cmd.Parameters.AddWithValue("ele", NpgsqlDbType.Double, result.elevation);
                         cmd.Parameters.AddWithValue("res", NpgsqlDbType.Double, result.resolution);
                         cmd.Parameters.AddWithValue("Source", NpgsqlDbType.Enum, source);
-                        cmd.Parameters.AddWithValue("wgs84", NpgsqlDbType.Smallint, SRID_WGS84);
+                        cmd.Parameters.AddWithValue("wgs84", NpgsqlDbType.Smallint, SRID.WGS84);
                         cmd.Prepare();
                         try
                         {
@@ -177,7 +174,7 @@ namespace AggregatedElevationService
                             cmd.Parameters.AddWithValue("ele", NpgsqlDbType.Double, result.elevation);
                             cmd.Parameters.AddWithValue("res", NpgsqlDbType.Double, result.resolution);
                             cmd.Parameters.AddWithValue("Source", NpgsqlDbType.Enum, source);
-                            cmd.Parameters.AddWithValue("wgs84", NpgsqlDbType.Smallint, SRID_WGS84);
+                            cmd.Parameters.AddWithValue("wgs84", NpgsqlDbType.Smallint, SRID.WGS84);
                             cmd.Prepare();
                             try
                             {
@@ -196,7 +193,7 @@ namespace AggregatedElevationService
             return rowCount;
         }
 
-        public int LoadXyzFile(string filepath)
+        public int LoadXyzFile(string filepath, SRID inputSrid)
         {
             IEnumerable<Xyz> xyzs = ExtractXyzs(filepath);
             int rowCount = 0;
@@ -213,14 +210,14 @@ namespace AggregatedElevationService
                         //Transformace z S-JTSK (5514) -> WGS84 (4326) | Vytvoření pointu -> Nastavení S-JTSK -> Trasformace na WGS84
                         cmd.CommandText =
                             "INSERT INTO points(point, latitude, longtitude, elevation, resolution, Source, time_added) " +
-                            "SELECT Transform.Result, ST_Y(Transform.Result), ST_X(Transform.Result), ST_Z(Transform.Result), 0, @Source, now() " +
-                            "FROM(SELECT ST_Transform(ST_SetSRID(ST_MakePoint(@x, @y, @z), @jstk), @wgs84) AS Result) AS Transform";
+                            "SELECT Transform.Result, ST_Y(Transform.Result), ST_X(Transform.Result), @z, 0, @Source, now() " +
+                            "FROM(SELECT ST_Transform(ST_SetSRID(ST_MakePoint(@x, @y, @z), @input_srid), @wgs84) AS Result) AS Transform";
                         cmd.Parameters.AddWithValue("Source", NpgsqlDbType.Enum, Source.File);
                         cmd.Parameters.AddWithValue("x", NpgsqlDbType.Double, xyz.x);
                         cmd.Parameters.AddWithValue("y", NpgsqlDbType.Double, xyz.y);
                         cmd.Parameters.AddWithValue("z", NpgsqlDbType.Double, xyz.z);
-                        cmd.Parameters.AddWithValue("jstk", NpgsqlDbType.Smallint, SRID_SJTSK);
-                        cmd.Parameters.AddWithValue("wgs84", NpgsqlDbType.Smallint, SRID_WGS84);
+                        cmd.Parameters.AddWithValue("jstk", NpgsqlDbType.Smallint, inputSrid);
+                        cmd.Parameters.AddWithValue("input_srid", NpgsqlDbType.Smallint, SRID.WGS84);
                         cmd.Prepare();
                         try
                         {
@@ -232,7 +229,6 @@ namespace AggregatedElevationService
                             logger.Error(e);
                         }
                     }
-                    if (rowCount == 100) break; //TODO: smazat
                 }
             }
             s.Stop();
@@ -240,7 +236,7 @@ namespace AggregatedElevationService
             return rowCount;
         }
 
-        public int LoadXyzFileParallel(string filepath)
+        public int LoadXyzFileParallel(string filepath, SRID inputSrid)
         {
             IEnumerable<Xyz> xyzs = ExtractXyzs(filepath);
             int rowCount = 0;
@@ -256,14 +252,14 @@ namespace AggregatedElevationService
                         //Transformace z S-JTSK (5514) -> WGS84 (4326) | Vytvoření pointu -> Nastavení S-JTSK -> Trasformace na WGS84
                         cmd.CommandText =
                             "INSERT INTO points(point, latitude, longtitude, elevation, resolution, Source, time_added) " +
-                            "SELECT Transform.Result, ST_Y(Transform.Result), ST_X(Transform.Result), ST_Z(Transform.Result), 0, @Source, now() " +
-                            "FROM(SELECT ST_Transform(ST_SetSRID(ST_MakePoint(@x, @y, @z), @jstk), @wgs84) AS Result) AS Transform";
+                            "SELECT Transform.Result, ST_Y(Transform.Result), ST_X(Transform.Result), @z, 0, @Source, now() " +
+                            "FROM(SELECT ST_Transform(ST_SetSRID(ST_MakePoint(@x, @y, @z), @input_srid), @wgs84) AS Result) AS Transform";
                         cmd.Parameters.AddWithValue("Source", NpgsqlDbType.Enum, Source.File);
                         cmd.Parameters.AddWithValue("x", NpgsqlDbType.Double, xyz.x);
                         cmd.Parameters.AddWithValue("y", NpgsqlDbType.Double, xyz.y);
                         cmd.Parameters.AddWithValue("z", NpgsqlDbType.Double, xyz.z);
-                        cmd.Parameters.AddWithValue("jstk", NpgsqlDbType.Smallint, SRID_SJTSK);
-                        cmd.Parameters.AddWithValue("wgs84", NpgsqlDbType.Smallint, SRID_WGS84);
+                        cmd.Parameters.AddWithValue("input_srid", NpgsqlDbType.Smallint, inputSrid);
+                        cmd.Parameters.AddWithValue("wgs84", NpgsqlDbType.Smallint, SRID.WGS84);
                         cmd.Prepare();
                         try
                         {
@@ -319,6 +315,35 @@ namespace AggregatedElevationService
             sr.Close();
             return xyzs;
         }
+        
+        public IEnumerable<Result> QueryForTestingElevationPrecision(int limit = 100, int offset = 0)
+        {
+            List<Result> results = new List<Result>();
+            using (var conn = new NpgsqlConnection(CONNECTION_STRING))
+            {
+                conn.Open();
+                conn.MapEnum<Source>();
+                using (var cmd = new NpgsqlCommand())
+                {
+                    cmd.Connection = conn;
+                    cmd.CommandText = "SELECT latitude, longtitude, elevation FROM points WHERE source = 'file' OFFSET @offset LIMIT @limit";
+                    cmd.Parameters.AddWithValue("offset", NpgsqlDbType.Integer, offset);
+                    cmd.Parameters.AddWithValue("limit", NpgsqlDbType.Integer, limit);
+                    using (NpgsqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            double latitude = reader.GetDouble(0);
+                            double longtitude = reader.GetDouble(1);
+                            double elevation = reader.GetDouble(2);
+                            results.Add(new Result(latitude, longtitude, elevation, 0));
+                        }
+                    }
+                }
+            }
+            return results;
+        }
+        
     }
 
     struct Xyz
@@ -340,5 +365,12 @@ namespace AggregatedElevationService
         [PgName("google")] Google,
         [PgName("seznam")] Seznam,
         [PgName("file")] File
+    }
+
+    enum SRID
+    {
+        WGS84 = 4326,
+        S_JTSK = 5514,
+        WGS84_UTM_33N = 32633   
     }
 }

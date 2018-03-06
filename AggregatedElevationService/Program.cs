@@ -3,6 +3,7 @@ using System.Configuration;
 using System.IO;
 using System.ServiceModel;
 using System.ServiceModel.Web;
+using System.Threading.Tasks;
 using System.Xml.Serialization;
 
 namespace AggregatedElevationService
@@ -19,13 +20,20 @@ namespace AggregatedElevationService
 
         private static void Main(string[] args)
         {
-            //var pgc = new PostgreDbConnector();
-            //pgc.InitializeDatabase();
+            //InitializeDatabase(); //TODO: dělat jen poprvé
             ChooseXyzFiles("files/");
-            StartElevationService();
+            //StartElevationService();
+            TestElevationPrecision();
             Console.ReadKey();
         }
 
+        private static void InitializeDatabase()
+        {
+            var pgc = new PostgreDbConnector();
+            pgc.InitializeDatabase();
+            //TODO: restartovat pak program
+        }
+        
         private static void StartElevationService()
         {
             string url = $"{SCHEME}://{HOST}:{PORT}/{PATH}";
@@ -85,10 +93,35 @@ namespace AggregatedElevationService
 
         private static void LoadXyzFile(string filepath, PostgreDbConnector pgc)
         {
-            Console.WriteLine("Loading file: {0}", filepath);
-            int rowsAdded = pgc.LoadXyzFileParallel(filepath);
-            Console.WriteLine("Rows {0} added from {1}", rowsAdded, filepath);
-            logger.Info("Rows {0} added from {1}", rowsAdded, filepath);
+            Console.WriteLine("Data formats: ");
+            Console.WriteLine("1) {0}", SRID.S_JTSK);
+            Console.WriteLine("2) {0}", SRID.WGS84_UTM_33N);
+            Console.Write("Choose data format: ");
+            string line = Console.ReadLine();
+            SRID inputFormat;
+            
+            switch (line)
+            {
+                case "1":
+                    inputFormat = SRID.S_JTSK;
+                    break;
+                case "2":
+                    inputFormat = SRID.WGS84_UTM_33N;
+                    break;
+                default:
+                    inputFormat = SRID.S_JTSK;
+                    break;
+            }
+            Console.WriteLine("Loading file {0} with format {1}", filepath, inputFormat);
+            int rowsAdded = pgc.LoadXyzFileParallel(filepath, inputFormat);
+            Console.WriteLine("Rows {0} added from {1} with format {2}", rowsAdded, filepath, inputFormat);
+            logger.Info("Rows {0} added from {1} with format {2}", rowsAdded, filepath, inputFormat);
+        }
+
+        private static void TestElevationPrecision()
+        {
+            var requestHandler = new RequestHandler();
+            requestHandler.TestElevationPrecision();
         }
     }
 

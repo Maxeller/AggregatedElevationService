@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text;
 using System.Xml.Serialization;
 
 namespace AggregatedElevationService
@@ -29,6 +30,19 @@ namespace AggregatedElevationService
                 result.Add(new Result(location, -1, -1));
             }
         }
+
+        public override string ToString()
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine($"Status: {status}");
+            sb.AppendLine("Results:");
+            foreach (Result r in result)
+            {
+                sb.AppendLine(r.ToString());
+            }
+
+            return sb.ToString();
+        }
     }
 
     public class Result
@@ -54,6 +68,11 @@ namespace AggregatedElevationService
             this.location = new Location(latitude, longtitude);
             this.elevation = elevation;
             this.resolution = resolution;
+        }
+
+        public override string ToString()
+        {
+            return $"Location: {location} Elevation: {elevation} Resolution: {resolution}";
         }
     }
 
@@ -89,6 +108,11 @@ namespace AggregatedElevationService
             hashCode = hashCode * -1521134295 + lat.GetHashCode();
             hashCode = hashCode * -1521134295 + lng.GetHashCode();
             return hashCode;
+        }
+
+        public override string ToString()
+        {
+            return $"Lat: {lat} Lng: {lng}";
         }
     }
 
