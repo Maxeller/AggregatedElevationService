@@ -197,7 +197,7 @@ namespace AggregatedElevationService
         {
             IEnumerable<Xyz> xyzs = ExtractXyzs(filepath);
             int rowCount = 0;
-            Stopwatch s = Stopwatch.StartNew(); //TODO: delete?
+            Stopwatch s = Stopwatch.StartNew();
             using (var conn = new NpgsqlConnection(CONNECTION_STRING))
             {
                 conn.Open();
@@ -211,7 +211,7 @@ namespace AggregatedElevationService
                         cmd.CommandText =
                             "INSERT INTO points(point, latitude, longtitude, elevation, resolution, Source, time_added) " +
                             "SELECT Transform.Result, ST_Y(Transform.Result), ST_X(Transform.Result), @z, 0, @Source, now() " +
-                            "FROM(SELECT ST_Transform(ST_SetSRID(ST_MakePoint(@x, @y, @z), @input_srid), @wgs84) AS Result) AS Transform";
+                            "FROM(SELECT ST_Transform(ST_SetSRID(ST_MakePoint(@x, @y), @input_srid), @wgs84) AS Result) AS Transform";
                         cmd.Parameters.AddWithValue("Source", NpgsqlDbType.Enum, Source.File);
                         cmd.Parameters.AddWithValue("x", NpgsqlDbType.Double, xyz.x);
                         cmd.Parameters.AddWithValue("y", NpgsqlDbType.Double, xyz.y);
@@ -232,7 +232,8 @@ namespace AggregatedElevationService
                 }
             }
             s.Stop();
-            Console.WriteLine("{0} rows added it took {1} ms", rowCount, s.ElapsedMilliseconds); //TODO: vylepšit výstup
+            Console.WriteLine("{0} rows added it took {1} ms", rowCount, s.ElapsedMilliseconds);
+            logger.Info("{0} rows added it took {1} ms", rowCount, s.ElapsedMilliseconds);
             return rowCount;
         }
 
@@ -240,6 +241,7 @@ namespace AggregatedElevationService
         {
             IEnumerable<Xyz> xyzs = ExtractXyzs(filepath);
             int rowCount = 0;
+            Stopwatch s = Stopwatch.StartNew();
             Parallel.ForEach(xyzs, () => 0, (xyz, state, subCount) =>
             {
                 using (var conn = new NpgsqlConnection(CONNECTION_STRING))
@@ -253,7 +255,7 @@ namespace AggregatedElevationService
                         cmd.CommandText =
                             "INSERT INTO points(point, latitude, longtitude, elevation, resolution, Source, time_added) " +
                             "SELECT Transform.Result, ST_Y(Transform.Result), ST_X(Transform.Result), @z, 0, @Source, now() " +
-                            "FROM(SELECT ST_Transform(ST_SetSRID(ST_MakePoint(@x, @y, @z), @input_srid), @wgs84) AS Result) AS Transform";
+                            "FROM(SELECT ST_Transform(ST_SetSRID(ST_MakePoint(@x, @y), @input_srid), @wgs84) AS Result) AS Transform";
                         cmd.Parameters.AddWithValue("Source", NpgsqlDbType.Enum, Source.File);
                         cmd.Parameters.AddWithValue("x", NpgsqlDbType.Double, xyz.x);
                         cmd.Parameters.AddWithValue("y", NpgsqlDbType.Double, xyz.y);
@@ -274,6 +276,9 @@ namespace AggregatedElevationService
                 }
                 return subCount;
             }, (finalCount) => Interlocked.Add(ref rowCount, finalCount));
+            s.Stop();
+            Console.WriteLine("{0} rows added it took {1} ms", rowCount, s.ElapsedMilliseconds);
+            logger.Info("{0} rows added it took {1} ms", rowCount, s.ElapsedMilliseconds);
             return rowCount;
         }
 
@@ -281,7 +286,7 @@ namespace AggregatedElevationService
         {
             var sr = new StreamReader(filepath);
             string line;
-            List<Xyz> xyzs = new List<Xyz>();
+            var xyzs = new List<Xyz>();
             int lineNumber = 0;
             while ((line = sr.ReadLine()) != null)
             {
@@ -318,7 +323,7 @@ namespace AggregatedElevationService
         
         public IEnumerable<Result> QueryForTestingElevationPrecision(int limit = 100, int offset = 0)
         {
-            List<Result> results = new List<Result>();
+            var results = new List<Result>();
             using (var conn = new NpgsqlConnection(CONNECTION_STRING))
             {
                 conn.Open();

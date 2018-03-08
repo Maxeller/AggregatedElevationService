@@ -23,7 +23,7 @@ namespace AggregatedElevationService
             IEnumerable<Location> parsedLocations = ParseLocations(locations);
             var elevationResponse = new ElevationResponse(parsedLocations);
 
-            List<Location> locsWithoutElevation = new List<Location>();
+            var locsWithoutElevation = new List<Location>(); //TODO: listy jsou inicializovat s kapacitou takže bych to měl asi udělat
             var pgc = new PostgreDbConnector();
             foreach (Result result in elevationResponse.result)
             {
@@ -44,7 +44,7 @@ namespace AggregatedElevationService
                 if (distance <= MAX_DISTANCE && distance >= 0)
                 {
                     result.elevation = elevation;
-                    result.resolution = resolution;
+                    result.resolution = resolution; //TODO: pokud to nemá resolution tak tam asi dát vzdálenost od toho pointu
                 }
                 else
                 {
@@ -111,7 +111,7 @@ namespace AggregatedElevationService
         {
             var google = new GoogleElevationProvider();
             var seznam = new SeznamElevationProvider();
-            List<Task<List<Result>>> elevationTasks = new List<Task<List<Result>>>()
+            var elevationTasks = new List<Task<List<Result>>>()
             {
                 google.GetElevationResultsAsync(locations),
                 seznam.GetElevationResultsAsync(locations),
@@ -150,16 +150,15 @@ namespace AggregatedElevationService
             return googleResults; //TODO: zatim vrací jen věci od googlu
         }
 
-        public async void TestElevationPrecision()
+        public async void TestElevationPrecision(int limit = 100, int offset = 0)
         {
             var pgc = new PostgreDbConnector();
-            IEnumerable<Result> results = pgc.QueryForTestingElevationPrecision(100,100);
+            IEnumerable<Result> results = pgc.QueryForTestingElevationPrecision(limit, offset);
             IEnumerable<Result> resultsEnumerable = results.ToList();
             List<Location> locations = resultsEnumerable.Select(result => result.location).ToList();
-
-            var google = new GoogleElevationProvider();
             var seznam = new SeznamElevationProvider();
-            List<Task<List<Result>>> elevationTasks = new List<Task<List<Result>>>()
+            var google = new GoogleElevationProvider();
+            var elevationTasks = new List<Task<List<Result>>>()
             {
                 google.GetElevationResultsAsync(locations),
                 seznam.GetElevationResultsAsync(locations),
@@ -206,9 +205,8 @@ namespace AggregatedElevationService
                 Console.WriteLine("-----------------------");
             }
 
-            Console.WriteLine("Google: {0}", Math.Sqrt(googleSum));
-            Console.WriteLine("Seznam: {0}", Math.Sqrt(seznamSum));
-
+            Console.WriteLine("Google: {0}", Math.Sqrt(googleSum)/limit);
+            Console.WriteLine("Seznam: {0}", Math.Sqrt(seznamSum)/limit);
         }
 }
 }

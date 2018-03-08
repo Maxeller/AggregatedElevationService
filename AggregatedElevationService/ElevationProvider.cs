@@ -25,19 +25,21 @@ namespace AggregatedElevationService
     {
         private const string BASE_URL = "https://maps.googleapis.com/maps/api/elevation/xml";
         private const short URL_LENGTH_LIMIT = 8192;
-        private const byte AVG_LENGTH = 20;
+        private const byte AVG_LENGTH = 35;
+        private const byte BASE_URL_LENGTH = 94;
+        private const short URL_CS_LIMIT = 7700;
         private static readonly string API_KEY = ConfigurationManager.AppSettings["google_elevation_api"];
 
         //TODO: asi nějak pořešit ten limit (2500 dotazů na den)
         //TODO: problém https://developers.google.com/maps/terms 10.5 d)
         public async Task<List<Result>> GetElevationResultsAsync(IEnumerable<Location> locations) //TODO: static?
         {
-            List<Result> results = new List<Result>();
+            var results = new List<Result>();
 
-            List<string> requestUrls = CreateRequestUrl(locations);
+            IEnumerable<string> requestUrls = CreateRequestUrl(locations);
             foreach (string requestUrl in requestUrls)
             {
-                using (var client = new HttpClient())
+                using (var client = new HttpClient()) //TODO: https://aspnetmonsters.com/2016/08/2016-08-27-httpclientwrong/
                 {
                     HttpResponseMessage response = await client.GetAsync(requestUrl);
                     if (response.IsSuccessStatusCode)
@@ -54,15 +56,15 @@ namespace AggregatedElevationService
             return results;
         }
 
-        private static List<string> CreateRequestUrl(IEnumerable<Location> locations)
+        public static IEnumerable<string> CreateRequestUrl(IEnumerable<Location> locations)
         {
-            List<string> urls = new List<string>();
+            var urls = new List<string>();
             var sbLocs = new StringBuilder();
             foreach (Location location in locations)
             {
                 sbLocs.AppendFormat(CultureInfo.InvariantCulture, "{0},{1}", location.lat, location.lng); 
                 sbLocs.Append("|");
-                if (sbLocs.Length + AVG_LENGTH >= URL_LENGTH_LIMIT)
+                if (sbLocs.Length + BASE_URL_LENGTH + AVG_LENGTH >= URL_CS_LIMIT)
                 {
                     sbLocs.Remove(sbLocs.Length - 1, 1);
                     urls.Add($"{BASE_URL}?key={API_KEY}&locations={sbLocs}");
@@ -76,7 +78,7 @@ namespace AggregatedElevationService
 
         private static IEnumerable<Result> ParseContent(string content)
         {
-            List<Result> results = new List<Result>();
+            var results = new List<Result>();
 
             XDocument xmlDocument = XDocument.Parse(content);
             string status = xmlDocument.XPathSelectElement("ElevationResponse/status")?.Value;
@@ -124,7 +126,7 @@ namespace AggregatedElevationService
         //TODO: problém https://api.mapy.cz/#pact 3.4 a 4.5
         public async Task<List<Result>> GetElevationResultsAsync(IEnumerable<Location> locations)
         {
-            List<Result> results = new List<Result>();
+            var results = new List<Result>();
 
             using (var client = new HttpClient())
             { 

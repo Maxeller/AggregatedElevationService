@@ -3,7 +3,6 @@ using System.Configuration;
 using System.IO;
 using System.ServiceModel;
 using System.ServiceModel.Web;
-using System.Threading.Tasks;
 using System.Xml.Serialization;
 
 namespace AggregatedElevationService
@@ -13,17 +12,17 @@ namespace AggregatedElevationService
         private static NLog.Logger logger = NLog.LogManager.GetCurrentClassLogger();
 
         private static readonly string SCHEME = ConfigurationManager.AppSettings["scheme"];
-        private static readonly string HOST = ConfigurationManager.AppSettings["host"];
-        private static readonly string HOST_LOCAL = ConfigurationManager.AppSettings["localhost"];
+        //private static readonly string HOST = ConfigurationManager.AppSettings["host"];
+        private static readonly string HOST = ConfigurationManager.AppSettings["localhost"];
         private static readonly string PORT = ConfigurationManager.AppSettings["port"];
         private static readonly string PATH = ConfigurationManager.AppSettings["path"];
 
         private static void Main(string[] args)
         {
             //InitializeDatabase(); //TODO: dělat jen poprvé
-            ChooseXyzFiles("files/");
-            //StartElevationService();
-            TestElevationPrecision();
+            //ChooseXyzFiles("files/");
+            StartElevationService();
+            //TestElevationPrecision();
             Console.ReadKey();
         }
 
@@ -121,7 +120,7 @@ namespace AggregatedElevationService
         private static void TestElevationPrecision()
         {
             var requestHandler = new RequestHandler();
-            requestHandler.TestElevationPrecision();
+            requestHandler.TestElevationPrecision(300, 500);
         }
     }
 
