@@ -16,11 +16,6 @@ namespace AggregatedElevationService
         Task<List<Result>> GetElevationResultsAsync(IEnumerable<Location> locations);
     }
 
-    class ElevationProvider //TODO: dodělat nebo smazat
-    {
-
-    }
-
     class GoogleElevationProvider : IElevationProvider
     {
         private const string BASE_URL = "https://maps.googleapis.com/maps/api/elevation/xml";

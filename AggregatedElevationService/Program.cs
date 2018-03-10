@@ -12,14 +12,14 @@ namespace AggregatedElevationService
         private static NLog.Logger logger = NLog.LogManager.GetCurrentClassLogger();
 
         private static readonly string SCHEME = ConfigurationManager.AppSettings["scheme"];
-        //private static readonly string HOST = ConfigurationManager.AppSettings["host"];
-        private static readonly string HOST = ConfigurationManager.AppSettings["localhost"];
+        private static readonly string HOST = ConfigurationManager.AppSettings["host"];
+        //private static readonly string HOST = ConfigurationManager.AppSettings["localhost"];
         private static readonly string PORT = ConfigurationManager.AppSettings["port"];
         private static readonly string PATH = ConfigurationManager.AppSettings["path"];
 
         private static void Main(string[] args)
         {
-            //InitializeDatabase(); //TODO: dělat jen poprvé
+            InitializeDatabase(); //TODO: dělat jen poprvé
             //ChooseXyzFiles("files/");
             StartElevationService();
             //TestElevationPrecision();

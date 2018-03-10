@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using System.Xml.Serialization;
+using Newtonsoft.Json;
 
 namespace AggregatedElevationService
 {
@@ -16,10 +17,10 @@ namespace AggregatedElevationService
             
         }
 
-        public ElevationResponse(string status, List<Result> results)
+        public ElevationResponse(string status, List<Result> result)
         {
             this.status = status;
-            this.result = results;
+            this.result = result;
         }
 
         public ElevationResponse(IEnumerable<Location> locations)
@@ -121,5 +122,6 @@ namespace AggregatedElevationService
         public const string OK = "OK";
         public const string KO = "KO";
         public const string INVALID_KEY = "Invalid API key";
+        public const string INCOMPLETE = "Results are incomplete";
     }
 }

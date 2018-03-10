@@ -58,7 +58,24 @@ namespace AggregatedElevationService
                 return elevationResponse;
             }
 
-            List<Result> providerResults = await GetElevation(locsWithoutElevation); //TODO: try catch
+            List<Result> providerResults = null;
+           
+            try
+            {
+                providerResults = await GetElevation(locsWithoutElevation);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+                logger.Error(e);
+            }
+
+            if (providerResults == null)
+            {
+                elevationResponse.status = ElevationResponses.INCOMPLETE;
+                return elevationResponse;
+            }
+
             foreach (Result result in elevationResponse.result)
             {
                 if (result.elevation != -1) continue;
@@ -128,7 +145,7 @@ namespace AggregatedElevationService
                 logger.Error(e);
             }
 
-            if (elevationResults == null) throw new ElevationProviderException("Elevation results were empty");
+            if (elevationResults == null) throw new ElevationProviderException("Elevation result were empty");
 
             List<Result> googleResults = elevationResults[0].ToList();
             List<Result> seznamResults = elevationResults[1].ToList();
@@ -175,7 +192,7 @@ namespace AggregatedElevationService
                 logger.Error(e);
             }
 
-            if (elevationResults == null) throw new ElevationProviderException("Elevation results were empty");
+            if (elevationResults == null) throw new ElevationProviderException("Elevation result were empty");
 
             List<Result> googleResults = elevationResults[0].ToList();
             List<Result> seznamResults = elevationResults[1].ToList();
