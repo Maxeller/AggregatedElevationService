@@ -79,12 +79,12 @@ namespace AggregatedElevationService
             }
         }
 
-        public static ResultDistance GetClosestPoint(Location location, bool premium)
+        public static ResultDistance GetClosestPoint(Location location, bool premium, bool spheroid)
         {
-            return GetClosestPoint(location.lat, location.lng, premium);
+            return GetClosestPoint(location.lat, location.lng, premium, spheroid);
         }
 
-        public static ResultDistance GetClosestPoint(double latitude, double longtitude, bool premium)
+        public static ResultDistance GetClosestPoint(double latitude, double longtitude, bool premium, bool spheroid)
         {
             using (var conn = new NpgsqlConnection(CONNECTION_STRING))
             {
@@ -93,11 +93,22 @@ namespace AggregatedElevationService
                 using (var cmd = new NpgsqlCommand())
                 {
                     cmd.Connection = conn;
-                    cmd.CommandText =
-                        "SELECT elevation, resolution, ST_DistanceSpheroid(points.point, ST_SetSRID(ST_MakePoint(@x, @y), @wgs84), \'SPHEROID[\"WGS 84\",6378137,298.257223563]\') " +
-                        "AS Distance FROM points " +
-                        (premium ? "" : "WHERE Source != @file ") +
-                        "ORDER BY Distance LIMIT 1";
+                    if (spheroid)
+                    {
+                        cmd.CommandText =
+                            "SELECT elevation, resolution, ST_DistanceSpheroid(points.point, ST_SetSRID(ST_MakePoint(@x, @y), @wgs84), \'SPHEROID[\"WGS 84\",6378137,298.257223563]\') " +
+                            "AS Distance FROM points " +
+                            (premium ? "" : "WHERE Source != @file ") +
+                            "ORDER BY Distance LIMIT 1";
+                    }
+                    else
+                    {
+                        cmd.CommandText =
+                            "SELECT elevation, resolution, ST_DistanceSphere(points.point, ST_SetSRID(ST_MakePoint(@x, @y), @wgs84)) " +
+                            "AS Distance FROM points " +
+                            (premium ? "" : "WHERE Source != @file ") +
+                            "ORDER BY Distance LIMIT 1";
+                    }
                     cmd.Parameters.AddWithValue("x", NpgsqlDbType.Double, longtitude);
                     cmd.Parameters.AddWithValue("y", NpgsqlDbType.Double, latitude);
                     cmd.Parameters.AddWithValue("wgs84", NpgsqlDbType.Smallint, SRID.WGS84);
@@ -118,7 +129,7 @@ namespace AggregatedElevationService
             return new ResultDistance(new Result(latitude, longtitude, -1, -1), -1);
         }
         
-        public static List<ResultDistance> GetClosestPointParallel(IEnumerable<Location> locations, bool premium)
+        public static List<ResultDistance> GetClosestPointParallel(IEnumerable<Location> locations, bool premium, bool spheroid)
         {
             var results = new ConcurrentBag<ResultDistance>();
             Parallel.ForEach(locations, location =>
@@ -130,11 +141,22 @@ namespace AggregatedElevationService
                     using (var cmd = new NpgsqlCommand())
                     {
                         cmd.Connection = conn;
-                        cmd.CommandText =
-                            "SELECT elevation, resolution, ST_DistanceSpheroid(points.point, ST_SetSRID(ST_MakePoint(@x, @y), @wgs84), \'SPHEROID[\"WGS 84\",6378137,298.257223563]\') " +
-                            "AS Distance FROM points " +
-                            (premium ? "" : "WHERE Source != @file ") +
-                            "ORDER BY Distance LIMIT 1";
+                        if (spheroid)
+                        {
+                            cmd.CommandText =
+                                "SELECT elevation, resolution, ST_DistanceSpheroid(points.point, ST_SetSRID(ST_MakePoint(@x, @y), @wgs84), \'SPHEROID[\"WGS 84\",6378137,298.257223563]\') " +
+                                "AS Distance FROM points " +
+                                (premium ? "" : "WHERE Source != @file ") +
+                                "ORDER BY Distance LIMIT 1";
+                        }
+                        else
+                        {
+                            cmd.CommandText =
+                                "SELECT elevation, resolution, ST_DistanceSphere(points.point, ST_SetSRID(ST_MakePoint(@x, @y), @wgs84)) " +
+                                "AS Distance FROM points " +
+                                (premium ? "" : "WHERE Source != @file ") +
+                                "ORDER BY Distance LIMIT 1";
+                        }
                         cmd.Parameters.AddWithValue("x", NpgsqlDbType.Double, location.lng);
                         cmd.Parameters.AddWithValue("y", NpgsqlDbType.Double, location.lat);
                         cmd.Parameters.AddWithValue("wgs84", NpgsqlDbType.Smallint, SRID.WGS84);

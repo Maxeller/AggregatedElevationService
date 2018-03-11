@@ -26,15 +26,21 @@ namespace AggregatedElevationService
 
             List<Location> locsWithoutElevation = null;
             if (source == null)
-            { 
-                //Stopwatch s = Stopwatch.StartNew();
-                //locsWithoutElevation = GetPointsFromDb(parsedLocations, ref elevationResponse, premiumUser);
-                //s.Stop();
-                //Console.WriteLine("Serial: "+s.ElapsedMilliseconds);
-                //s.Restart();
-                locsWithoutElevation = GetPointsFromDbParallel(parsedLocations, ref elevationResponse, premiumUser);
-                //s.Stop();
-                //Console.WriteLine("Parallel: " + s.ElapsedMilliseconds);
+            {
+                /*
+                Stopwatch s = Stopwatch.StartNew();
+                locsWithoutElevation = GetPointsFromDb(parsedLocations, ref elevationResponse, premiumUser, false);
+                s.Stop();
+                Console.WriteLine("Spheroid: "+s.ElapsedMilliseconds);
+                s.Restart();
+                locsWithoutElevation = GetPointsFromDbParallel(parsedLocations, ref elevationResponse, premiumUser, false);
+                s.Stop();
+                Console.WriteLine("Sphere: " + s.ElapsedMilliseconds);
+                */
+                Stopwatch s = Stopwatch.StartNew();
+                locsWithoutElevation = GetPointsFromDbParallel(parsedLocations, ref elevationResponse, premiumUser, spheroid: false);
+                s.Stop();
+                Console.WriteLine("Getting points: " + s.ElapsedMilliseconds);
 
                 if (locsWithoutElevation.Count == 0)
                 {
@@ -114,7 +120,7 @@ namespace AggregatedElevationService
             return latLongs;
         }
 
-        private static List<Location> GetPointsFromDb(IEnumerable<Location> locations, ref ElevationResponse elevationResponse, bool premiumUser)
+        private static List<Location> GetPointsFromDb(IEnumerable<Location> locations, ref ElevationResponse elevationResponse, bool premiumUser, bool spheroid)
         {
             var locsWithoutElevation = new List<Location>();
             foreach (Result result in elevationResponse.result)
@@ -122,7 +128,7 @@ namespace AggregatedElevationService
                 var closest = new ResultDistance();
                 try
                 {
-                    closest = PostgreDbConnector.GetClosestPoint(result.location, premiumUser);
+                    closest = PostgreDbConnector.GetClosestPoint(result.location, premiumUser, spheroid);
                 }
                 catch (Exception e)
                 {
@@ -144,13 +150,13 @@ namespace AggregatedElevationService
             return locsWithoutElevation;
         }
 
-        private static List<Location> GetPointsFromDbParallel(IEnumerable<Location> locations, ref ElevationResponse elevationResponse, bool premiumUser)
+        private static List<Location> GetPointsFromDbParallel(IEnumerable<Location> locations, ref ElevationResponse elevationResponse, bool premiumUser, bool spheroid)
         {
             var locsWithoutElevation = new List<Location>();
             List<ResultDistance> resultDistances;
             try
             {
-                resultDistances = PostgreDbConnector.GetClosestPointParallel(locations, premiumUser);
+                resultDistances = PostgreDbConnector.GetClosestPointParallel(locations, premiumUser, spheroid);
             }
             catch (Exception e)
             {
