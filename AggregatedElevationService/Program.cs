@@ -19,8 +19,8 @@ namespace AggregatedElevationService
 
         private static void Main(string[] args)
         {
-            InitializeDatabase(); //TODO: dělat jen poprvé
-            //ChooseXyzFiles("files/");
+            //InitializeDatabase(); //TODO: dělat jen poprvé
+            ChooseXyzFiles("files/");
             StartElevationService();
             //TestElevationPrecision();
             Console.ReadKey();
@@ -112,7 +112,7 @@ namespace AggregatedElevationService
                     break;
             }
             Console.WriteLine("Loading file {0} with format {1}", filepath, inputFormat);
-            int rowsAdded = pgc.LoadXyzFileParallel(filepath, inputFormat);
+            int rowsAdded = PostgreDbConnector.LoadXyzFileParallel(filepath, inputFormat);
             Console.WriteLine("Rows {0} added from {1} with format {2}", rowsAdded, filepath, inputFormat);
             logger.Info("Rows {0} added from {1} with format {2}", rowsAdded, filepath, inputFormat);
         }
@@ -120,7 +120,7 @@ namespace AggregatedElevationService
         private static void TestElevationPrecision()
         {
             var requestHandler = new RequestHandler();
-            requestHandler.TestElevationPrecision(300, 500);
+            RequestHandler.TestElevationPrecision(300, 500);
         }
     }
 

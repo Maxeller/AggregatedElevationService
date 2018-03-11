@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
@@ -12,7 +13,7 @@ namespace AggregatedElevationService
 
         private const double MAX_DISTANCE = 2.0d; //TODO: určit jestli je to dostatečná vzálenost
 
-        public async Task<ElevationResponse> HandleRequest(string key, string locations)
+        public async Task<ElevationResponse> HandleRequest(string key, string locations, string source)
         {
             var (existingUser, premiumUser) = CheckApiKey(key);
             if (!existingUser)
@@ -20,49 +21,37 @@ namespace AggregatedElevationService
                 return new ElevationResponse(ElevationResponses.INVALID_KEY, null);
             }
 
-            IEnumerable<Location> parsedLocations = ParseLocations(locations);
+            IEnumerable<Location> parsedLocations = ParseLocations(locations).ToList();
             var elevationResponse = new ElevationResponse(parsedLocations);
 
-            var locsWithoutElevation = new List<Location>(); //TODO: listy jsou inicializovat s kapacitou takže bych to měl asi udělat
-            var pgc = new PostgreDbConnector();
-            foreach (Result result in elevationResponse.result)
-            {
-                double elevation = -1;
-                double resolution = -1;
-                double distance = -1;
+            List<Location> locsWithoutElevation = null;
+            if (source == null)
+            { 
+                //Stopwatch s = Stopwatch.StartNew();
+                //locsWithoutElevation = GetPointsFromDb(parsedLocations, ref elevationResponse, premiumUser);
+                //s.Stop();
+                //Console.WriteLine("Serial: "+s.ElapsedMilliseconds);
+                //s.Restart();
+                locsWithoutElevation = GetPointsFromDbParallel(parsedLocations, ref elevationResponse, premiumUser);
+                //s.Stop();
+                //Console.WriteLine("Parallel: " + s.ElapsedMilliseconds);
 
-                try
+                if (locsWithoutElevation.Count == 0)
                 {
-                    (elevation, resolution, distance) = pgc.GetClosestPoint(result.location, premiumUser);
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine(e.Message);
-                    logger.Error(e);
-                }
-
-                if (distance <= MAX_DISTANCE && distance >= 0)
-                {
-                    result.elevation = elevation;
-                    result.resolution = resolution; //TODO: pokud to nemá resolution tak tam asi dát vzdálenost od toho pointu
-                }
-                else
-                {
-                    locsWithoutElevation.Add(result.location);
+                    elevationResponse.status = ElevationResponses.OK;
+                    return elevationResponse;
                 }
             }
-
-            if (locsWithoutElevation.Count == 0)
+            else
             {
-                elevationResponse.status = ElevationResponses.OK;
-                return elevationResponse;
+                locsWithoutElevation = (List<Location>) parsedLocations;
             }
+
 
             List<Result> providerResults = null;
-           
             try
             {
-                providerResults = await GetElevation(locsWithoutElevation);
+                providerResults = await GetElevation(locsWithoutElevation, source);
             }
             catch (Exception e)
             {
@@ -72,6 +61,7 @@ namespace AggregatedElevationService
 
             if (providerResults == null)
             {
+                if (source != null) throw new ElevationProviderException("Results from providers were empty");
                 elevationResponse.status = ElevationResponses.INCOMPLETE;
                 return elevationResponse;
             }
@@ -97,7 +87,7 @@ namespace AggregatedElevationService
         private static IEnumerable<Location> ParseLocations(string locations)
         {
             string[] locationsSplit = locations.Split('|'); //TODO: kontrola formátování
-            List<Location> latLongs = new List<Location>();
+            var latLongs = new List<Location>();
             foreach (string l in locationsSplit)
             {
                 string[] locSplit = l.Split(',');
@@ -124,7 +114,69 @@ namespace AggregatedElevationService
             return latLongs;
         }
 
-        private async Task<List<Result>> GetElevation(IReadOnlyCollection<Location> locations)
+        private static List<Location> GetPointsFromDb(IEnumerable<Location> locations, ref ElevationResponse elevationResponse, bool premiumUser)
+        {
+            var locsWithoutElevation = new List<Location>();
+            foreach (Result result in elevationResponse.result)
+            {
+                var closest = new ResultDistance();
+                try
+                {
+                    closest = PostgreDbConnector.GetClosestPoint(result.location, premiumUser);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                    logger.Error(e);
+                }
+
+                if (closest.Distance <= MAX_DISTANCE && closest.Distance >= 0)
+                {
+                    result.elevation = closest.Result.elevation;
+                    result.resolution = closest.Result.resolution != -1 ? closest.Result.resolution : closest.Distance;
+                }
+                else
+                {
+                    locsWithoutElevation.Add(result.location);
+                }
+            }
+
+            return locsWithoutElevation;
+        }
+
+        private static List<Location> GetPointsFromDbParallel(IEnumerable<Location> locations, ref ElevationResponse elevationResponse, bool premiumUser)
+        {
+            var locsWithoutElevation = new List<Location>();
+            List<ResultDistance> resultDistances;
+            try
+            {
+                resultDistances = PostgreDbConnector.GetClosestPointParallel(locations, premiumUser);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+                logger.Error(e);
+                throw;
+            }
+            
+            foreach (Result result in elevationResponse.result)
+            {
+                ResultDistance closest = resultDistances.Find(rd => rd.Result.location.Equals(result.location));
+                if (closest.Distance <= MAX_DISTANCE && closest.Distance >= 0)
+                {
+                    result.elevation = closest.Result.elevation;
+                    result.resolution = closest.Result.resolution != -1 ? closest.Result.resolution : closest.Distance;
+                }
+                else
+                {
+                    locsWithoutElevation.Add(result.location);
+                }
+            }
+
+            return locsWithoutElevation;
+        }
+
+        private static async Task<List<Result>> GetElevation(IReadOnlyCollection<Location> locations, string source)
         {
             var google = new GoogleElevationProvider();
             var seznam = new SeznamElevationProvider();
@@ -154,8 +206,8 @@ namespace AggregatedElevationService
             var pgc = new PostgreDbConnector();
             try
             {
-                int rowsAddedGoogle = pgc.InsertResultsParallel(googleResults, Source.Google);
-                int rowsAddedSeznam = pgc.InsertResultsParallel(seznamResults, Source.Seznam);
+                int rowsAddedGoogle = PostgreDbConnector.InsertResultsParallel(googleResults, Source.Google);
+                int rowsAddedSeznam = PostgreDbConnector.InsertResultsParallel(seznamResults, Source.Seznam);
             }
             catch (Exception e)
             {
@@ -163,14 +215,19 @@ namespace AggregatedElevationService
                 logger.Error(e);
             }
 
-
-            return googleResults; //TODO: zatim vrací jen věci od googlu
+            switch (source)
+            {
+                case "seznam":
+                    return seznamResults;
+                default:
+                    return googleResults;
+            }
         }
 
-        public async void TestElevationPrecision(int limit = 100, int offset = 0)
+        public static async void TestElevationPrecision(int limit = 100, int offset = 0)
         {
             var pgc = new PostgreDbConnector();
-            IEnumerable<Result> results = pgc.QueryForTestingElevationPrecision(limit, offset);
+            IEnumerable<Result> results = PostgreDbConnector.QueryForTestingElevationPrecision(limit, offset);
             IEnumerable<Result> resultsEnumerable = results.ToList();
             List<Location> locations = resultsEnumerable.Select(result => result.location).ToList();
             var seznam = new SeznamElevationProvider();

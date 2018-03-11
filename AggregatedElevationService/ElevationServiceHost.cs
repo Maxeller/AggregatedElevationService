@@ -14,12 +14,12 @@ namespace AggregatedElevationService
         private static NLog.Logger logger = NLog.LogManager.GetCurrentClassLogger();
 
         [OperationContract()]
-        [WebGet(UriTemplate = "/xml?key={key}&locations={locations}", ResponseFormat = WebMessageFormat.Xml)] //TODO: možná sem přidat ještě &Source={Source} pro testování
+        [WebGet(UriTemplate = "/xml?key={key}&locations={locations}&source={source}", ResponseFormat = WebMessageFormat.Xml)]
         [XmlSerializerFormat()]
-        public async Task<ElevationResponse> XmlRequest(string key, string locations) 
+        public async Task<ElevationResponse> XmlRequest(string key, string locations, string source) 
         {
             WebOperationContext webOperationContext = WebOperationContext.Current;
-            IncomingWebRequestContext incomingWebRequestContext = webOperationContext.IncomingRequest; //TODO: asi vyřešit tenhle possible NullReferenceException
+            IncomingWebRequestContext incomingWebRequestContext = webOperationContext.IncomingRequest;
             string uri = incomingWebRequestContext.UriTemplateMatch.RequestUri.ToString();
             Console.WriteLine("{0}: Request (XmlRequest) to {1}", System.DateTime.Now, uri);
             logger.Info("Request (XmlRequest) to {0}", uri);
@@ -28,7 +28,7 @@ namespace AggregatedElevationService
             var requestHandler = new RequestHandler();
             try
             {
-                elevationResponse = await requestHandler.HandleRequest(key, locations);
+                elevationResponse = await requestHandler.HandleRequest(key, locations, source);
             }
             catch (Exception e)
             {
@@ -42,8 +42,8 @@ namespace AggregatedElevationService
         }
 
         [OperationContract()]
-        [WebGet(UriTemplate = "/json?key={key}&locations={locations}", ResponseFormat = WebMessageFormat.Json)]
-        public async Task<ElevationResponse> JsonRequest(string key, string locations)
+        [WebGet(UriTemplate = "/json?key={key}&locations={locations}&source={source}", ResponseFormat = WebMessageFormat.Json)]
+        public async Task<ElevationResponse> JsonRequest(string key, string locations, string source)
         {
             WebOperationContext webOperationContext = WebOperationContext.Current;
             IncomingWebRequestContext incomingWebRequestContext = webOperationContext.IncomingRequest;
@@ -55,7 +55,7 @@ namespace AggregatedElevationService
             var requestHandler = new RequestHandler();
             try
             {
-                elevationResponse = await requestHandler.HandleRequest(key, locations);
+                elevationResponse = await requestHandler.HandleRequest(key, locations, source);
             }
             catch (Exception e)
             {

@@ -25,6 +25,8 @@ namespace AggregatedElevationService
         private const short URL_CS_LIMIT = 7700;
         private static readonly string API_KEY = ConfigurationManager.AppSettings["google_elevation_api"];
 
+        private static HttpClient httpClient = new HttpClient();
+
         //TODO: asi nějak pořešit ten limit (2500 dotazů na den)
         //TODO: problém https://developers.google.com/maps/terms 10.5 d)
         public async Task<List<Result>> GetElevationResultsAsync(IEnumerable<Location> locations) //TODO: static?
@@ -34,19 +36,17 @@ namespace AggregatedElevationService
             IEnumerable<string> requestUrls = CreateRequestUrl(locations);
             foreach (string requestUrl in requestUrls)
             {
-                using (var client = new HttpClient()) //TODO: https://aspnetmonsters.com/2016/08/2016-08-27-httpclientwrong/
+                HttpResponseMessage response = await httpClient.GetAsync(requestUrl);
+                if (response.IsSuccessStatusCode)
                 {
-                    HttpResponseMessage response = await client.GetAsync(requestUrl);
-                    if (response.IsSuccessStatusCode)
-                    {
-                        string content = await response.Content.ReadAsStringAsync();
-                        results.AddRange(ParseContent(content));
-                    }
-                    else
-                    {
-                        throw new ElevationProviderException($"{response.ReasonPhrase} - {response.RequestMessage}");
-                    }
+                    string content = await response.Content.ReadAsStringAsync();
+                    results.AddRange(ParseContent(content));
                 }
+                else
+                {
+                    throw new ElevationProviderException($"{response.ReasonPhrase} - {response.RequestMessage}");
+                }
+
             }
             return results;
         }
@@ -118,27 +118,27 @@ namespace AggregatedElevationService
         private const string SAMPLE_PAYLOAD = "yhECAWgLZ2V0QWx0aXR1ZGVYAVgCGAAAAAAAAC5AGAAAAAAAAElAOAEQ";
         private const string HEADER = "application/x-base64-frpc";
 
+        private static HttpClient httpClient = new HttpClient();
+
         //TODO: problém https://api.mapy.cz/#pact 3.4 a 4.5
         public async Task<List<Result>> GetElevationResultsAsync(IEnumerable<Location> locations)
         {
             var results = new List<Result>();
 
-            using (var client = new HttpClient())
-            { 
-                foreach (Location location in locations)
+            foreach (Location location in locations) //TODO: paralllel?
+            {
+                HttpResponseMessage response = await httpClient.PostAsync(BASE_URL, CreateContentWithPayload(location));
+                if (response.IsSuccessStatusCode)
                 {
-                    HttpResponseMessage response = await client.PostAsync(BASE_URL, CreateContentWithPayload(location));
-                    if (response.IsSuccessStatusCode)
-                    {
-                        string content = await response.Content.ReadAsStringAsync();
-                        results.Add(ParseContent(content));
-                    }
-                    else
-                    {
-                        throw new ElevationProviderException($"{response.ReasonPhrase} - {response.RequestMessage}");
-                    }
+                    string content = await response.Content.ReadAsStringAsync();
+                    results.Add(ParseContent(content));
+                }
+                else
+                {
+                    throw new ElevationProviderException($"{response.ReasonPhrase} - {response.RequestMessage}");
                 }
             }
+
             return results;
         }
 
@@ -157,10 +157,9 @@ namespace AggregatedElevationService
                 bool isLatParsed = double.TryParse(latitude, NumberStyles.Float, CultureInfo.InvariantCulture, out double lat);
                 bool isLngParsed = double.TryParse(longtitude, NumberStyles.Float, CultureInfo.InvariantCulture, out double lng);
                 bool isEleParsed = double.TryParse(elevation, NumberStyles.Float, CultureInfo.InvariantCulture, out double ele);
-                bool isResParsed = true;//double.TryParse(resolution, NumberStyles.Float, CultureInfo.InvariantCulture, out double res);
-                if (isLatParsed && isLngParsed && isEleParsed && isResParsed)
+                if (isLatParsed && isLngParsed && isEleParsed)
                 {
-                    return new Result(lat, lng, ele, 1); //TODO: pořešit jakou má seznam teda přesnost
+                    return new Result(lat, lng, ele, 0);
                 }
                 else
                 {

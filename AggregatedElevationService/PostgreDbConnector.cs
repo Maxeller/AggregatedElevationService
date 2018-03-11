@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Configuration;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql;
@@ -19,7 +21,7 @@ namespace AggregatedElevationService
         private static readonly string DB_USERNAME = ConfigurationManager.AppSettings["db_username"];
         private static readonly string DB_PASSWORD = ConfigurationManager.AppSettings["db_password"];
         private static readonly string DB_DATABASE = ConfigurationManager.AppSettings["db_database"];
-        private static readonly string CONNECTION_STRING = $"Host={DB_HOST};Username={DB_USERNAME};Password={DB_PASSWORD};Database={DB_DATABASE}";
+        private static readonly string CONNECTION_STRING = $"Host={DB_HOST};Username={DB_USERNAME};Password={DB_PASSWORD};Database={DB_DATABASE};ApplicationName=AggregatedElevationService;MaxAutoPrepare=3";
 
         public PostgreDbConnector()
         {
@@ -77,12 +79,12 @@ namespace AggregatedElevationService
             }
         }
 
-        public (double elevation, double resolution, double distance) GetClosestPoint(Location location, bool premium)
+        public static ResultDistance GetClosestPoint(Location location, bool premium)
         {
             return GetClosestPoint(location.lat, location.lng, premium);
         }
 
-        public (double elevation, double resolution, double distance) GetClosestPoint(double latitude, double longtitude, bool premium)
+        public static ResultDistance GetClosestPoint(double latitude, double longtitude, bool premium)
         {
             using (var conn = new NpgsqlConnection(CONNECTION_STRING))
             {
@@ -92,7 +94,7 @@ namespace AggregatedElevationService
                 {
                     cmd.Connection = conn;
                     cmd.CommandText =
-                        "SELECT elevation, resolution, ST_Distance_Spheroid(points.point, ST_SetSRID(ST_MakePoint(@x, @y), @wgs84), \'SPHEROID[\"WGS 84\",6378137,298.257223563]\') " +
+                        "SELECT elevation, resolution, ST_DistanceSpheroid(points.point, ST_SetSRID(ST_MakePoint(@x, @y), @wgs84), \'SPHEROID[\"WGS 84\",6378137,298.257223563]\') " +
                         "AS Distance FROM points " +
                         (premium ? "" : "WHERE Source != @file ") +
                         "ORDER BY Distance LIMIT 1";
@@ -108,15 +110,54 @@ namespace AggregatedElevationService
                             double elevation = reader.GetDouble(0);
                             double resolution = reader.GetDouble(1);
                             double distance = reader.GetDouble(2);
-                            return (elevation, resolution, distance);
+                            return new ResultDistance(new Result(latitude, longtitude, elevation, resolution), distance);
                         }
                     }
                 }
             }
-            return (-1, -1,-1);
+            return new ResultDistance(new Result(latitude, longtitude, -1, -1), -1);
+        }
+        
+        public static List<ResultDistance> GetClosestPointParallel(IEnumerable<Location> locations, bool premium)
+        {
+            var results = new ConcurrentBag<ResultDistance>();
+            Parallel.ForEach(locations, location =>
+            {
+                using (var conn = new NpgsqlConnection(CONNECTION_STRING))
+                {
+                    conn.Open();
+                    conn.MapEnum<Source>();
+                    using (var cmd = new NpgsqlCommand())
+                    {
+                        cmd.Connection = conn;
+                        cmd.CommandText =
+                            "SELECT elevation, resolution, ST_DistanceSpheroid(points.point, ST_SetSRID(ST_MakePoint(@x, @y), @wgs84), \'SPHEROID[\"WGS 84\",6378137,298.257223563]\') " +
+                            "AS Distance FROM points " +
+                            (premium ? "" : "WHERE Source != @file ") +
+                            "ORDER BY Distance LIMIT 1";
+                        cmd.Parameters.AddWithValue("x", NpgsqlDbType.Double, location.lng);
+                        cmd.Parameters.AddWithValue("y", NpgsqlDbType.Double, location.lat);
+                        cmd.Parameters.AddWithValue("wgs84", NpgsqlDbType.Smallint, SRID.WGS84);
+                        if (!premium) cmd.Parameters.AddWithValue("file", NpgsqlDbType.Enum, Source.File);
+                        cmd.Prepare();
+                        using (NpgsqlDataReader reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                double elevation = reader.GetDouble(0);
+                                double resolution = reader.GetDouble(1);
+                                double distance = reader.GetDouble(2);
+                                results.Add(new ResultDistance(new Result(location, elevation, resolution), distance));
+                            }
+                        }
+                    }
+                }
+            });
+
+            return results.ToList();
         }
 
-        public int InsertResults(IEnumerable<Result> results, Source source)
+        public static int InsertResults(IEnumerable<Result> results, Source source)
         {
             int rowCount = 0;
             using (var conn = new NpgsqlConnection(CONNECTION_STRING))
@@ -153,7 +194,7 @@ namespace AggregatedElevationService
             return rowCount;
         }
 
-        public int InsertResultsParallel(IEnumerable<Result> results, Source source)
+        public static int InsertResultsParallel(IEnumerable<Result> results, Source source)
         {
             int rowCount = 0;
             Parallel.ForEach(results, () => 0, (result, state, subCount) =>
@@ -193,7 +234,7 @@ namespace AggregatedElevationService
             return rowCount;
         }
 
-        public int LoadXyzFile(string filepath, SRID inputSrid)
+        public static int LoadXyzFile(string filepath, SRID inputSrid)
         {
             IEnumerable<Xyz> xyzs = ExtractXyzs(filepath);
             int rowCount = 0;
@@ -237,7 +278,7 @@ namespace AggregatedElevationService
             return rowCount;
         }
 
-        public int LoadXyzFileParallel(string filepath, SRID inputSrid)
+        public static int LoadXyzFileParallel(string filepath, SRID inputSrid)
         {
             IEnumerable<Xyz> xyzs = ExtractXyzs(filepath);
             int rowCount = 0;
@@ -321,7 +362,7 @@ namespace AggregatedElevationService
             return xyzs;
         }
         
-        public IEnumerable<Result> QueryForTestingElevationPrecision(int limit = 100, int offset = 0)
+        public static IEnumerable<Result> QueryForTestingElevationPrecision(int limit = 100, int offset = 0)
         {
             var results = new List<Result>();
             using (var conn = new NpgsqlConnection(CONNECTION_STRING))
@@ -349,6 +390,18 @@ namespace AggregatedElevationService
             return results;
         }
         
+    }
+
+    struct ResultDistance
+    {
+        public Result Result { get; set; }
+        public double Distance { get; set; }
+
+        public ResultDistance(Result result, double distance) : this()
+        {
+            Result = result;
+            Distance = distance;
+        }
     }
 
     struct Xyz
