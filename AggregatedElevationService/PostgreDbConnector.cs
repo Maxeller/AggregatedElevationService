@@ -28,7 +28,7 @@ namespace AggregatedElevationService
             
         }
 
-        public void InitializeDatabase()
+        public static void InitializeDatabase()
         {
             using (var conn = new NpgsqlConnection(CONNECTION_STRING))
             {

@@ -29,7 +29,7 @@ namespace AggregatedElevationService
 
         //TODO: asi nějak pořešit ten limit (2500 dotazů na den)
         //TODO: problém https://developers.google.com/maps/terms 10.5 d)
-        public async Task<List<Result>> GetElevationResultsAsync(IEnumerable<Location> locations) //TODO: static?
+        public async Task<List<Result>> GetElevationResultsAsync(IEnumerable<Location> locations)
         {
             var results = new List<Result>();
 
@@ -51,7 +51,7 @@ namespace AggregatedElevationService
             return results;
         }
 
-        public static IEnumerable<string> CreateRequestUrl(IEnumerable<Location> locations)
+        private static IEnumerable<string> CreateRequestUrl(IEnumerable<Location> locations)
         {
             var urls = new List<string>();
             var sbLocs = new StringBuilder();
@@ -152,7 +152,6 @@ namespace AggregatedElevationService
                 string latitude = ((XElement)geometryCode?.LastNode)?.Value;
                 string longtitude = ((XElement)geometryCode?.FirstNode)?.Value;
                 string elevation = xmlDocument.XPathSelectElement("//name[contains(text(),'altitudeCode')]/../value/array/data/value/double")?.Value;
-                //string resolution = responseResult.XPathSelectElement("resolution")?.Value; 
 
                 bool isLatParsed = double.TryParse(latitude, NumberStyles.Float, CultureInfo.InvariantCulture, out double lat);
                 bool isLngParsed = double.TryParse(longtitude, NumberStyles.Float, CultureInfo.InvariantCulture, out double lng);

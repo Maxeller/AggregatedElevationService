@@ -3,6 +3,7 @@ using System.Configuration;
 using System.IO;
 using System.ServiceModel;
 using System.ServiceModel.Web;
+using System.Windows.Forms;
 using System.Xml.Serialization;
 
 namespace AggregatedElevationService
@@ -19,7 +20,10 @@ namespace AggregatedElevationService
 
         private static void Main(string[] args)
         {
-            //InitializeDatabase(); //TODO: dělat jen poprvé
+            if (ConfigurationManager.AppSettings["db_initialized"] == "false")
+            {
+                InitializeDatabase();
+            }
             ChooseXyzFiles("files/");
             StartElevationService();
             //TestElevationPrecision();
@@ -28,9 +32,16 @@ namespace AggregatedElevationService
 
         private static void InitializeDatabase()
         {
-            var pgc = new PostgreDbConnector();
-            pgc.InitializeDatabase();
-            //TODO: restartovat pak program
+            PostgreDbConnector.InitializeDatabase();
+
+            Configuration configFile = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
+            KeyValueConfigurationCollection settings = configFile.AppSettings.Settings;
+            settings["db_initialized"].Value = "true";
+            configFile.Save(ConfigurationSaveMode.Modified);
+            ConfigurationManager.RefreshSection(configFile.AppSettings.SectionInformation.Name);
+
+            System.Diagnostics.Process.Start(Application.ExecutablePath);
+            Environment.Exit(0);
         }
         
         private static void StartElevationService()

@@ -4,7 +4,6 @@ using System.ServiceModel;
 using System.ServiceModel.Channels;
 using System.ServiceModel.Web;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
 
 namespace AggregatedElevationService
 {
