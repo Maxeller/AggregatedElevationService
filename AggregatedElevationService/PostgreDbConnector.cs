@@ -116,6 +116,7 @@ namespace AggregatedElevationService
                     cmd.Prepare();
                     using (NpgsqlDataReader reader = cmd.ExecuteReader())
                     {
+                        if (!reader.HasRows) return new ResultDistance(new Result(latitude, longtitude, -1, -1), -1);
                         while (reader.Read())
                         {
                             double elevation = reader.GetDouble(0);
@@ -164,6 +165,7 @@ namespace AggregatedElevationService
                         cmd.Prepare();
                         using (NpgsqlDataReader reader = cmd.ExecuteReader())
                         {
+                            if (!reader.HasRows) results.Add(new ResultDistance(new Result(location, -1, -1), -1));
                             while (reader.Read())
                             {
                                 double elevation = reader.GetDouble(0);

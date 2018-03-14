@@ -24,7 +24,7 @@ namespace AggregatedElevationService
             {
                 InitializeDatabase();
             }
-            ChooseXyzFiles("files/");
+            //ChooseXyzFiles("files/");
             StartElevationService();
             //TestElevationPrecision();
             Console.ReadKey();
@@ -80,7 +80,7 @@ namespace AggregatedElevationService
                 var pgc = new PostgreDbConnector();
                 foreach (string file in files)
                 {
-                    LoadXyzFile(file, pgc);
+                    LoadXyzFile(file);
                 }
             }
             else
@@ -95,13 +95,13 @@ namespace AggregatedElevationService
                 foreach (string fileNumber in fileNumbers)
                 {
                     string file = files[int.Parse(fileNumber)-1];
-                    LoadXyzFile(file, pgc);
+                    LoadXyzFile(file);
                 }
             }
             //TODO: označit, že jsou už načtený
         }
 
-        private static void LoadXyzFile(string filepath, PostgreDbConnector pgc)
+        private static void LoadXyzFile(string filepath)
         {
             Console.WriteLine("Data formats: ");
             Console.WriteLine("1) {0}", SRID.S_JTSK);
