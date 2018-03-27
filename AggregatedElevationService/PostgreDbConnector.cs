@@ -163,25 +163,16 @@ namespace AggregatedElevationService
                         cmd.Parameters.AddWithValue("wgs84", NpgsqlDbType.Smallint, SRID.WGS84);
                         if (!premium) cmd.Parameters.AddWithValue("file", NpgsqlDbType.Enum, Source.File);
                         cmd.Prepare();
-                        try //TODO: dát všude jinam
+                        using (NpgsqlDataReader reader = cmd.ExecuteReader())
                         {
-                            using (NpgsqlDataReader reader = cmd.ExecuteReader())
+                            if (!reader.HasRows) results.Add(new ResultDistance(new Result(location, -1, -1), -1));
+                            while (reader.Read())
                             {
-                                if (!reader.HasRows) results.Add(new ResultDistance(new Result(location, -1, -1), -1));
-                                while (reader.Read())
-                                {
-                                    double elevation = reader.GetDouble(0);
-                                    double resolution = reader.GetDouble(1);
-                                    double distance = reader.GetDouble(2);
-                                    results.Add(new ResultDistance(new Result(location, elevation, resolution != 0 ? resolution : -1), distance));
-                                }
+                                double elevation = reader.GetDouble(0);
+                                double resolution = reader.GetDouble(1);
+                                double distance = reader.GetDouble(2);
+                                results.Add(new ResultDistance(new Result(location, elevation, resolution != 0 ? resolution : -1), distance));
                             }
-                        }
-                        catch (Exception e)
-                        {
-                            Console.WriteLine(e.Message);
-                            logger.Error(e);
-                            throw new ElevationProviderException("DB error", e);
                         }
                     }
                 }

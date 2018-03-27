@@ -73,6 +73,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AccuracyTesting.cs" />
     <Compile Include="PostgreDbConnector.cs" />
     <Compile Include="ElevationProvider.cs" />
     <Compile Include="ElevationServiceHost.cs" />

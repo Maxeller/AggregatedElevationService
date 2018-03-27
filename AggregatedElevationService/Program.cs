@@ -131,7 +131,7 @@ namespace AggregatedElevationService
         private static void TestElevationPrecision()
         {
             var requestHandler = new RequestHandler();
-            RequestHandler.TestElevationPrecision(300, 500);
+            AccuracyTesting.TestElevationPrecision(300, 500);
         }
     }
 
