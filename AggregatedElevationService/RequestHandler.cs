@@ -76,6 +76,15 @@ namespace AggregatedElevationService
             {
                 if (result.elevation != -1) continue;
                 Result providerResult = providerResults.Find(r => r.location.Equals(result.location));
+                if (providerResult == null)
+                {
+                    //Google rád ořezává počet desetinných míst - kontrola s počtem, který Google vrací (ten je taky variabilní)
+                    string number = providerResults[0].location.lat.ToString(CultureInfo.InvariantCulture);
+                    int length = number.Substring(number.IndexOf(".")).Length-1; 
+                    double lat = Math.Round(result.location.lat, length);
+                    double lng = Math.Round(result.location.lng, length);
+                    providerResult = providerResults.Find(r => r.location.Equals(new Location(lat, lng)));
+                }
                 result.elevation = providerResult.elevation;
                 result.resolution = providerResult.resolution;
             }
@@ -139,7 +148,7 @@ namespace AggregatedElevationService
                 if (closest.Distance <= MAX_DISTANCE && closest.Distance >= 0)
                 {
                     result.elevation = closest.Result.elevation;
-                    result.resolution = closest.Result.resolution != -1 ? closest.Result.resolution : closest.Distance;
+                    result.resolution = closest.Result.resolution != -1 || closest.Result.resolution != 0 ? closest.Result.resolution : closest.Distance;
                 }
                 else
                 {
@@ -184,6 +193,7 @@ namespace AggregatedElevationService
 
         private static async Task<List<Result>> GetElevation(IReadOnlyCollection<Location> locations, string source)
         {
+            //TODO: vylepšit source
             var google = new GoogleElevationProvider();
             var seznam = new SeznamElevationProvider();
             var elevationTasks = new List<Task<List<Result>>>()
@@ -209,16 +219,18 @@ namespace AggregatedElevationService
             List<Result> seznamResults = elevationResults[1].ToList();
 
             //Uložení hodnot do databáze
-            var pgc = new PostgreDbConnector();
-            try
+            if (source == "google" || source == "seznam")
             {
-                int rowsAddedGoogle = PostgreDbConnector.InsertResultsParallel(googleResults, Source.Google);
-                int rowsAddedSeznam = PostgreDbConnector.InsertResultsParallel(seznamResults, Source.Seznam);
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e.Message);
-                logger.Error(e);
+                try
+                {
+                    int rowsAddedGoogle = PostgreDbConnector.InsertResultsParallel(googleResults, Source.Google);
+                    int rowsAddedSeznam = PostgreDbConnector.InsertResultsParallel(seznamResults, Source.Seznam);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                    logger.Error(e);
+                }
             }
 
             switch (source)

@@ -26,7 +26,7 @@ namespace AggregatedElevationService
             }
             //ChooseXyzFiles("files/");
             StartElevationService();
-            //TestElevationPrecision();
+            //TestElevationPrecision(); //conture map
             Console.ReadKey();
         }
 
@@ -105,7 +105,7 @@ namespace AggregatedElevationService
         {
             Console.WriteLine("Data formats: ");
             Console.WriteLine("1) {0}", SRID.S_JTSK);
-            Console.WriteLine("2) {0}", SRID.WGS84_UTM_33N);
+            Console.WriteLine("2) {0}", SRID.WGS84_UTM_33N); //TODO: smazat páč ty data maj jen jtsk
             Console.Write("Choose data format: ");
             string line = Console.ReadLine();
             SRID inputFormat;
