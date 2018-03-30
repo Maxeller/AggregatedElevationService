@@ -26,7 +26,7 @@ namespace AggregatedElevationService
             }
             //ChooseXyzFiles("files/");
             StartElevationService();
-            //TestElevationPrecision(); //conture map
+            //TestElevationPrecision();
             Console.ReadKey();
         }
 
@@ -131,7 +131,7 @@ namespace AggregatedElevationService
         private static void TestElevationPrecision()
         {
             var requestHandler = new RequestHandler();
-            AccuracyTesting.TestElevationPrecision(300, 500);
+            AccuracyTesting.TestElevationPrecision(100, 0, true);
         }
     }
 

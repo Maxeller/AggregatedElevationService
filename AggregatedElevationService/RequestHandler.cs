@@ -12,31 +12,26 @@ namespace AggregatedElevationService
         private static NLog.Logger logger = NLog.LogManager.GetCurrentClassLogger();
 
         private const double MAX_DISTANCE = 2.0d; //TODO: určit jestli je to dostatečná vzálenost
+        private const double WITHIN_DISTANCE = 10.0d;
 
         public async Task<ElevationResponse> HandleRequest(string key, string locations, string source)
         {
+            //Zjištění validity API klíče
             var (existingUser, premiumUser) = CheckApiKey(key);
             if (!existingUser)
             {
                 return new ElevationResponse(ElevationResponses.INVALID_KEY, null);
             }
 
+            //Parsování a kontrola lokací v URL
             IEnumerable<Location> parsedLocations = ParseLocations(locations).ToList();
+            //Vytvoření odpovědi s lokacemi 
             var elevationResponse = new ElevationResponse(parsedLocations);
 
+            //Nalezení nejbližího bodu v DB (pokud nebyl nebyl přímo vybrán source [spíše použit jako testovací funkce])
             List<Location> locsWithoutElevation = null;
             if (source == null)
             {
-                /*
-                Stopwatch s = Stopwatch.StartNew();
-                locsWithoutElevation = GetPointsFromDb(parsedLocations, ref elevationResponse, premiumUser, false);
-                s.Stop();
-                Console.WriteLine("Spheroid: "+s.ElapsedMilliseconds);
-                s.Restart();
-                locsWithoutElevation = GetPointsFromDbParallel(parsedLocations, ref elevationResponse, premiumUser, false);
-                s.Stop();
-                Console.WriteLine("Sphere: " + s.ElapsedMilliseconds);
-                */
                 Stopwatch s = Stopwatch.StartNew();
                 locsWithoutElevation = GetPointsFromDbParallel(parsedLocations, ref elevationResponse, premiumUser, spheroid: false);
                 s.Stop();
@@ -53,7 +48,7 @@ namespace AggregatedElevationService
                 locsWithoutElevation = (List<Location>) parsedLocations;
             }
 
-
+            //Načtení hodnot (které nebyly nalezeny v DB) z externích poskytovatelů výškopisu
             List<Result> providerResults = null;
             try
             {
@@ -64,7 +59,7 @@ namespace AggregatedElevationService
                 Console.WriteLine(e.Message);
                 logger.Error(e);
             }
-
+            //TODO: tohle by asi šlo taky někam schovat takže to udělej
             if (providerResults == null)
             {
                 if (source != null) throw new ElevationProviderException("Results from providers were empty");
@@ -89,6 +84,7 @@ namespace AggregatedElevationService
                 result.resolution = providerResult.resolution;
             }
 
+            //Vrácení kompletní odpovědi
             elevationResponse.status = ElevationResponses.OK;
             return elevationResponse;
         }
@@ -137,7 +133,7 @@ namespace AggregatedElevationService
                 var closest = new ResultDistance();
                 try
                 {
-                    closest = PostgreDbConnector.GetClosestPoint(result.location, premiumUser, spheroid);
+                    closest = PostgreDbConnector.GetClosestPointsWithin(result.location, WITHIN_DISTANCE, premiumUser, spheroid);
                 }
                 catch (Exception e)
                 {
@@ -165,7 +161,7 @@ namespace AggregatedElevationService
             List<ResultDistance> resultDistances;
             try
             {
-                resultDistances = PostgreDbConnector.GetClosestPointParallel(locations, premiumUser, spheroid);
+                resultDistances = PostgreDbConnector.GetClosestPointsWithinParallel(locations, WITHIN_DISTANCE, premiumUser, spheroid);
             }
             catch (Exception e)
             {

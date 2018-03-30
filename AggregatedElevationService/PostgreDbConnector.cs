@@ -23,11 +23,10 @@ namespace AggregatedElevationService
         private static readonly string DB_DATABASE = ConfigurationManager.AppSettings["db_database"];
         private static readonly string CONNECTION_STRING = $"Host={DB_HOST};Username={DB_USERNAME};Password={DB_PASSWORD};Database={DB_DATABASE};ApplicationName=AggregatedElevationService;MaxAutoPrepare=3";
 
-        public PostgreDbConnector()
-        {
-            
-        }
-
+        /// <summary>
+        /// Inicializuje databázi s názvem uvedeném v konfiguračním souboru.
+        /// Vytvoří rozšíření PostGIS, vytvoří enum pro určení zdroje dat, vytvoří tabulku
+        /// </summary>
         public static void InitializeDatabase()
         {
             using (var conn = new NpgsqlConnection(CONNECTION_STRING))
@@ -77,6 +76,147 @@ namespace AggregatedElevationService
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Vrátí výsledek s lokací, která má výšku nejbližího bodu, přesnost a jeho vzdálenost od zadané lokace.
+        /// </summary>
+        /// <param name="location">Lokace</param>
+        /// <param name="within">Vzdálenost ve které bod hledat</param>
+        /// <param name="premium">Prohledávat hodnoty nahrané ze souboru</param>
+        /// <param name="spheroid">Použití přesnějšího měření vzdálenosti (pomalejší)</param>
+        /// <returns>výsledek s lokací, která má výšku nejbližího bodu, přesnost a jeho vzdálenost od zadané lokace</returns>
+        public static ResultDistance GetClosestPointsWithin(Location location, double within , bool premium, bool spheroid)
+        {
+            return GetClosestPointsWithin(location.lat, location.lng, within, premium, spheroid);
+        }
+
+        /// <summary>
+        /// Vrátí výsledek s lokací (ze zadané zem. šířky a výšky), která má výšku nejbližího bodu, přesnost a jeho vzdálenost od zadané zem. šířky a výšky.
+        /// </summary>
+        /// <param name="latitude">zeměpisná šířka</param>
+        /// <param name="longtitude">zeměpisná šířka</param>
+        /// <param name="within">Vzdálenost ve které bod hledat</param>
+        /// <param name="premium">Prohledávat hodnoty nahrané ze souboru</param>
+        /// <param name="spheroid">Použití přesnějšího měření vzdálenosti (pomalejší)</param>
+        /// <returns>Výsledek s lokací (ze zadané zem. šířky a výšky), která má výšku nejbližího bodu, přesnost a jeho vzdálenost od zadané zem. šířky a výšky</returns>
+        public static ResultDistance GetClosestPointsWithin(double latitude, double longtitude, double within, bool premium, bool spheroid)
+        {
+            using (var conn = new NpgsqlConnection(CONNECTION_STRING))
+            {
+                conn.Open();
+                conn.MapEnum<Source>();
+                using (var cmd = new NpgsqlCommand())
+                {
+                    cmd.Connection = conn;
+                    if (spheroid)
+                    {
+                        cmd.CommandText =
+                            "SELECT elevation, resolution, ST_DistanceSphere(point, Input) as Distance FROM (" +
+                            "SELECT *, ST_DWithin(point::geography, Input::geography, @within) as Within FROM (" +
+                            "SELECT *, ST_SetSRID(ST_MakePoint(@x, @y), @wgs84) as Input FROM points) as mp) as dw " +
+                            "WHERE Within = true " +
+                            (premium ? "" : "AND Source != @file ") +
+                            "ORDER BY Distance LIMIT 1";
+                    }
+                    else
+                    {
+                        cmd.CommandText =
+                            "SELECT elevation, resolution, ST_DistanceSpheroid(point, input, \'SPHEROID[\"WGS 84\",6378137,298.257223563]\') as Distance FROM (" +
+                            "SELECT *, ST_DWithin(point::geography, input::geography, @within) as Within FROM (" +
+                            "SELECT *, ST_SetSRID(ST_MakePoint(@x, @y), @wgs84) as input FROM points) as mp) as dw " +
+                            "WHERE Within = true " +
+                            (premium ? "" : "AND Source != @file ") +
+                            "ORDER BY Distance LIMIT 1";
+                    }
+
+                    cmd.Parameters.AddWithValue("x", NpgsqlDbType.Double, longtitude);
+                    cmd.Parameters.AddWithValue("y", NpgsqlDbType.Double, latitude);
+                    cmd.Parameters.AddWithValue("wgs84", NpgsqlDbType.Smallint, SRID.WGS84);
+                    cmd.Parameters.AddWithValue("within", NpgsqlDbType.Double, within);
+                    if (!premium) cmd.Parameters.AddWithValue("file", NpgsqlDbType.Enum, Source.File);
+                    cmd.Prepare();
+                    using (NpgsqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        if (!reader.HasRows) return new ResultDistance(new Result(latitude, longtitude, -1, -1), -1);
+                        while (reader.Read())
+                        {
+                            double elevation = reader.GetDouble(0);
+                            double resolution = reader.GetDouble(1);
+                            double distance = reader.GetDouble(2);
+                            return new ResultDistance(
+                                new Result(latitude, longtitude, elevation, resolution != 0 ? resolution : -1),
+                                distance);
+                        }
+                    }
+                }
+            }
+            return new ResultDistance(new Result(latitude, longtitude, -1, -1), -1);
+        }
+
+        /// <summary>
+        /// Vrátí kolekci lokací s výškou nejbližího bodu, přesnost a jeho vzdálenost od zadané lokace.
+        /// </summary>
+        /// <param name="locations">Kolekce lokací</param>
+        /// <param name="within">Vzdálenost ve které bod hledat</param>
+        /// <param name="premium">Prohledávat hodnoty nahrané ze souboru</param>
+        /// <param name="spheroid">Použití přesnějšího měření vzdálenosti (pomalejší)</param>
+        /// <returns>List lokací s výškou nejbližího bodu, přesnost a jeho vzdálenost od zadané lokace</returns>
+        public static List<ResultDistance> GetClosestPointsWithinParallel(IEnumerable<Location> locations, double within, bool premium, bool spheroid)
+        {
+            var results = new ConcurrentBag<ResultDistance>();
+            Parallel.ForEach(locations, location =>
+            {
+                using (var conn = new NpgsqlConnection(CONNECTION_STRING))
+                {
+                    conn.Open();
+                    conn.MapEnum<Source>();
+                    using (var cmd = new NpgsqlCommand())
+                    {
+                        cmd.Connection = conn;
+                        if (spheroid)
+                        {
+                            cmd.CommandText =
+                                "SELECT elevation, resolution, ST_DistanceSphere(point, Input) as Distance FROM (" +
+                                "SELECT *, ST_DWithin(point::geography, Input::geography, @within) as Within FROM (" +
+                                "SELECT *, ST_SetSRID(ST_MakePoint(@x, @y), @wgs84) as Input FROM points) as mp) as dw " +
+                                "WHERE Within = true " +
+                                (premium ? "" : "AND Source != @file ") +
+                                "ORDER BY Distance LIMIT 1";
+                        }
+                        else
+                        {
+                            cmd.CommandText =
+                                "SELECT elevation, resolution, ST_DistanceSpheroid(point, input, \'SPHEROID[\"WGS 84\",6378137,298.257223563]\') as Distance FROM (" +
+                                "SELECT *, ST_DWithin(point::geography, input::geography, @within) as Within FROM (" +
+                                "SELECT *, ST_SetSRID(ST_MakePoint(@x, @y), @wgs84) as input FROM points) as mp) as dw " +
+                                "WHERE Within = true " +
+                                (premium ? "" : "AND Source != @file ") +
+                                "ORDER BY Distance LIMIT 1";
+                        }
+
+                        cmd.Parameters.AddWithValue("x", NpgsqlDbType.Double, location.lng);
+                        cmd.Parameters.AddWithValue("y", NpgsqlDbType.Double, location.lat);
+                        cmd.Parameters.AddWithValue("wgs84", NpgsqlDbType.Smallint, SRID.WGS84);
+                        cmd.Parameters.AddWithValue("within", NpgsqlDbType.Double, within);
+                        if (!premium) cmd.Parameters.AddWithValue("file", NpgsqlDbType.Enum, Source.File);
+                        cmd.Prepare();
+                        using (NpgsqlDataReader reader = cmd.ExecuteReader())
+                        {
+                            if (!reader.HasRows) results.Add(new ResultDistance(new Result(location, -1, -1), -1));
+                            while (reader.Read())
+                            {
+                                double elevation = reader.GetDouble(0);
+                                double resolution = reader.GetDouble(1);
+                                double distance = reader.GetDouble(2);
+                                results.Add(new ResultDistance(new Result(location, elevation, resolution != 0 ? resolution : -1), distance));
+                            }
+                        }
+                    }
+                }
+            });
+
+            return results.ToList();
         }
 
         public static ResultDistance GetClosestPoint(Location location, bool premium, bool spheroid)
@@ -413,7 +553,43 @@ namespace AggregatedElevationService
             }
             return results;
         }
-        
+
+        public static IEnumerable<Result> QueryForTestingElevationPrecisionClosestPoints(Location location, int limit = 100, int offset = 0)
+        {
+            var results = new List<Result>();
+            using (var conn = new NpgsqlConnection(CONNECTION_STRING))
+            {
+                conn.Open();
+                conn.MapEnum<Source>();
+                using (var cmd = new NpgsqlCommand())
+                {
+                    cmd.Connection = conn;
+                    cmd.CommandText =
+                        "SELECT latitude, longtitude, elevation, ST_DistanceSphere(points.point, ST_SetSRID(ST_MakePoint(@x, @y), @wgs84)) " +
+                        "AS Distance FROM points WHERE source = @file " +
+                        "ORDER BY Distance OFFSET @offset LIMIT @limit";
+                    cmd.Parameters.AddWithValue("x", NpgsqlDbType.Double, location.lng);
+                    cmd.Parameters.AddWithValue("y", NpgsqlDbType.Double, location.lat);
+                    cmd.Parameters.AddWithValue("wgs84", NpgsqlDbType.Smallint, SRID.WGS84);
+                    cmd.Parameters.AddWithValue("file", NpgsqlDbType.Enum, Source.File);
+                    cmd.Parameters.AddWithValue("offset", NpgsqlDbType.Integer, offset);
+                    cmd.Parameters.AddWithValue("limit", NpgsqlDbType.Integer, limit);
+                    using (NpgsqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            double latitude = reader.GetDouble(0);
+                            double longtitude = reader.GetDouble(1);
+                            double elevation = reader.GetDouble(2);
+                            results.Add(new Result(latitude, longtitude, elevation, 0));
+                        }
+                    }
+                }
+            }
+
+            return results;
+        }
+
     }
 
     struct ResultDistance
