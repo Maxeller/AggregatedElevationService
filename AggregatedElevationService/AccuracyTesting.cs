@@ -14,7 +14,7 @@ namespace AggregatedElevationService
         public static async void TestElevationPrecision(int limit = 100, int offset = 0, bool file = false, bool closest = true)
         {
             IEnumerable<Result> results = closest
-                ? PostgreDbConnector.QueryForTestingElevationPrecisionClosestPoints(new Location(50.50, 13.65), limit, offset)
+                ? PostgreDbConnector.QueryForTestingElevationPrecisionClosestPoints(new Location(50.499805, 13.6484716), limit, offset)
                 : PostgreDbConnector.QueryForTestingElevationPrecision(limit, offset);
 
             IEnumerable<Result> resultsEnumerable = results.ToList();
@@ -80,8 +80,31 @@ namespace AggregatedElevationService
             }
             tw.Close();
 
-            Console.WriteLine("Google: {0}", Math.Sqrt(googleSum) / limit);
-            Console.WriteLine("Seznam: {0}", Math.Sqrt(seznamSum) / limit);
+            double googleRozdil = Math.Sqrt(googleSum) / limit;
+            double seznamRozdil = Math.Sqrt(seznamSum) / limit;
+            Console.WriteLine("Google rozdíl: {0}", googleRozdil);
+            Console.WriteLine("Seznam rozdíl: {0}", seznamRozdil);
+
+            googleSum = 0;
+            seznamSum = 0;
+            i = 0;
+            foreach (Result result in resultsEnumerable)
+            { 
+                Result googleResult = googleResults[i];
+                Result seznamResult = seznamResults[i];
+                i++;
+                double gr = Math.Sqrt(Math.Pow(result.elevation - googleResult.elevation, 2));
+                double sr = Math.Sqrt(Math.Pow(result.elevation - seznamResult.elevation, 2));
+                googleSum += Math.Pow(gr - googleRozdil, 2);
+                seznamSum += Math.Pow(sr - seznamRozdil, 2);
+            }
+
+            double googleOdchylka = Math.Sqrt((1.0 / (limit - 1)) * googleSum);
+            double seznamOdchylka = Math.Sqrt((1.0 / (limit - 1)) * seznamSum);
+
+            Console.WriteLine("Google odchylka: {0}", googleOdchylka);
+            Console.WriteLine("Seznam odchylka: {0}", seznamOdchylka);
+
         }
     }
 }
