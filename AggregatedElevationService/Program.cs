@@ -18,13 +18,15 @@ namespace AggregatedElevationService
         private static readonly string PORT = ConfigurationManager.AppSettings["port"];
         private static readonly string PATH = ConfigurationManager.AppSettings["path"];
 
+        private static readonly string FILEPATH = ConfigurationManager.AppSettings["filepath"];
+
         private static void Main(string[] args)
         {
             if (ConfigurationManager.AppSettings["db_initialized"] == "false")
             {
                 InitializeDatabase();
             }
-            //ChooseXyzFiles("files/");
+            //ChooseXyzFiles(FILEPATH);
             //StartElevationService();
             TestElevationPrecision();
             Console.ReadKey();
