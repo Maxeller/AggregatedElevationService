@@ -19,10 +19,11 @@ namespace AggregatedElevationService
     class GoogleElevationProvider : IElevationProvider
     {
         private const string BASE_URL = "https://maps.googleapis.com/maps/api/elevation/xml";
-        private const short URL_LENGTH_LIMIT = 8192;
+        //private const short URL_LENGTH_LIMIT = 8192;
         private const byte AVG_LENGTH = 35;
         private const byte BASE_URL_LENGTH = 94;
         private const short URL_CS_LIMIT = 7700;
+
         private static readonly string API_KEY = ConfigurationManager.AppSettings["google_elevation_api"];
 
         private static HttpClient httpClient = new HttpClient();

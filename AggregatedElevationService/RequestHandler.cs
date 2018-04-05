@@ -29,7 +29,7 @@ namespace AggregatedElevationService
             var elevationResponse = new ElevationResponse(parsedLocations);
 
             //Nalezení nejbližího bodu v DB (pokud nebyl nebyl přímo vybrán source [spíše použit jako testovací funkce])
-            List<Location> locsWithoutElevation = null;
+            List<Location> locsWithoutElevation;
             if (source == null)
             {
                 Stopwatch s = Stopwatch.StartNew();

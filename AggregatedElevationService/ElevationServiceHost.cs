@@ -19,7 +19,7 @@ namespace AggregatedElevationService
             WebOperationContext webOperationContext = WebOperationContext.Current;
             IncomingWebRequestContext incomingWebRequestContext = webOperationContext.IncomingRequest;
             string uri = incomingWebRequestContext.UriTemplateMatch.RequestUri.ToString();
-            Console.WriteLine("{0}: Request (XmlRequest) to {1}", System.DateTime.Now, uri);
+            Console.WriteLine("{0}: Request (XmlRequest) to {1}", DateTime.Now, uri);
             logger.Info("Request (XmlRequest) to {0}", uri);
 
             var elevationResponse = new ElevationResponse();
@@ -46,7 +46,7 @@ namespace AggregatedElevationService
             WebOperationContext webOperationContext = WebOperationContext.Current;
             IncomingWebRequestContext incomingWebRequestContext = webOperationContext.IncomingRequest;
             string uri = incomingWebRequestContext.UriTemplateMatch.RequestUri.ToString();
-            Console.WriteLine("{0}: Request (JsonRequest) to {1}", System.DateTime.Now, uri);
+            Console.WriteLine("{0}: Request (JsonRequest) to {1}", DateTime.Now, uri);
             logger.Info("Request (JsonRequest) to {0}", uri);
 
             var elevationResponse = new ElevationResponse();
@@ -74,7 +74,7 @@ namespace AggregatedElevationService
             WebOperationContext webOperationContext = WebOperationContext.Current;
             IncomingWebRequestContext incomingWebRequestContext = webOperationContext.IncomingRequest;
             string uri = incomingWebRequestContext.UriTemplateMatch.RequestUri.ToString();
-            Console.WriteLine("{0}: Request caugth by OtherUris: {1}", System.DateTime.Now, uri);
+            Console.WriteLine("{0}: Request caugth by OtherUris: {1}", DateTime.Now, uri);
             logger.Info("Request caugth by AllURIs: {0}", uri);
 
             return new ElevationResponse(ElevationResponses.KO, null);

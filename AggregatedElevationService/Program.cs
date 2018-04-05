@@ -14,10 +14,8 @@ namespace AggregatedElevationService
 
         private static readonly string SCHEME = ConfigurationManager.AppSettings["scheme"];
         private static readonly string HOST = ConfigurationManager.AppSettings["host"];
-        //private static readonly string HOST = ConfigurationManager.AppSettings["localhost"];
         private static readonly string PORT = ConfigurationManager.AppSettings["port"];
         private static readonly string PATH = ConfigurationManager.AppSettings["path"];
-
         private static readonly string FILEPATH = ConfigurationManager.AppSettings["filepath"];
 
         private static void Main(string[] args)
@@ -79,7 +77,6 @@ namespace AggregatedElevationService
             
             if (line == number.ToString())
             {
-                var pgc = new PostgreDbConnector();
                 foreach (string file in files)
                 {
                     LoadXyzFile(file);
@@ -93,7 +90,6 @@ namespace AggregatedElevationService
                 {
                     fileNumbers = line.Split(',');
                 }
-                var pgc = new PostgreDbConnector();
                 foreach (string fileNumber in fileNumbers)
                 {
                     string file = files[int.Parse(fileNumber)-1];
@@ -105,29 +101,10 @@ namespace AggregatedElevationService
 
         private static void LoadXyzFile(string filepath)
         {
-            Console.WriteLine("Data formats: ");
-            Console.WriteLine("1) {0}", SRID.S_JTSK);
-            Console.WriteLine("2) {0}", SRID.WGS84_UTM_33N); //TODO: smazat páč ty data maj jen jtsk
-            Console.Write("Choose data format: ");
-            string line = Console.ReadLine();
-            SRID inputFormat;
-            
-            switch (line)
-            {
-                case "1":
-                    inputFormat = SRID.S_JTSK;
-                    break;
-                case "2":
-                    inputFormat = SRID.WGS84_UTM_33N;
-                    break;
-                default:
-                    inputFormat = SRID.S_JTSK;
-                    break;
-            }
-            Console.WriteLine("Loading file {0} with format {1}", filepath, inputFormat);
-            int rowsAdded = PostgreDbConnector.LoadXyzFileParallel(filepath, inputFormat);
-            Console.WriteLine("Rows {0} added from {1} with format {2}", rowsAdded, filepath, inputFormat);
-            logger.Info("Rows {0} added from {1} with format {2}", rowsAdded, filepath, inputFormat);
+            Console.WriteLine("Loading file {0}", filepath);
+            int rowsAdded = PostgreDbConnector.LoadXyzFileParallel(filepath, SRID.S_JTSK);
+            Console.WriteLine("Rows {0} added from {1}", rowsAdded, filepath);
+            logger.Info("Rows {0} added from {1}", rowsAdded, filepath);
         }
 
         private static void TestElevationPrecision()

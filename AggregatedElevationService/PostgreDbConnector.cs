@@ -219,11 +219,13 @@ namespace AggregatedElevationService
             return results.ToList();
         }
 
+        [Obsolete("Please use method GetClosestPointsWithin")]
         public static ResultDistance GetClosestPoint(Location location, bool premium, bool spheroid)
         {
             return GetClosestPoint(location.lat, location.lng, premium, spheroid);
         }
 
+        [Obsolete("Please use method GetClosestPointsWithin")]
         public static ResultDistance GetClosestPoint(double latitude, double longtitude, bool premium, bool spheroid)
         {
             using (var conn = new NpgsqlConnection(CONNECTION_STRING))
@@ -269,7 +271,8 @@ namespace AggregatedElevationService
             }
             return new ResultDistance(new Result(latitude, longtitude, -1, -1), -1);
         }
-        
+
+        [Obsolete("Please use method GetClosestPointsWithinParallel")]
         public static List<ResultDistance> GetClosestPointParallel(IEnumerable<Location> locations, bool premium, bool spheroid)
         {
             var results = new ConcurrentBag<ResultDistance>();
@@ -628,7 +631,6 @@ namespace AggregatedElevationService
     enum SRID
     {
         WGS84 = 4326,
-        S_JTSK = 5514,
-        WGS84_UTM_33N = 32633   
+        S_JTSK = 5514
     }
 }
