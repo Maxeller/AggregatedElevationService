@@ -192,13 +192,13 @@ namespace AggregatedElevationService
             //TODO: vylepšit source
             var google = new GoogleElevationProvider();
             var seznam = new SeznamElevationProvider();
-            var elevationTasks = new List<Task<List<Result>>>()
+            var elevationTasks = new List<Task<IEnumerable<Result>>>()
             {
                 google.GetElevationResultsAsync(locations),
                 seznam.GetElevationResultsAsync(locations),
             };
 
-            List<Result>[] elevationResults = null;
+            IEnumerable<Result>[] elevationResults = null;
             try
             {
                 elevationResults = await Task.WhenAll(elevationTasks);

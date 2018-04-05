@@ -21,13 +21,13 @@ namespace AggregatedElevationService
             List<Location> locations = resultsEnumerable.Select(result => result.location).ToList();
             var seznam = new SeznamElevationProvider();
             var google = new GoogleElevationProvider();
-            var elevationTasks = new List<Task<List<Result>>>()
+            var elevationTasks = new List<Task<IEnumerable<Result>>>()
             {
                 google.GetElevationResultsAsync(locations),
                 seznam.GetElevationResultsAsync(locations),
             };
 
-            List<Result>[] elevationResults = null;
+            IEnumerable<Result>[] elevationResults = null;
             try
             {
                 elevationResults = await Task.WhenAll(elevationTasks);

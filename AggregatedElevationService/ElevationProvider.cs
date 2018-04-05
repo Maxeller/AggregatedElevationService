@@ -13,7 +13,7 @@ namespace AggregatedElevationService
 {
     interface IElevationProvider
     {
-        Task<List<Result>> GetElevationResultsAsync(IEnumerable<Location> locations);
+        Task<IEnumerable<Result>> GetElevationResultsAsync(IEnumerable<Location> locations);
     }
 
     class GoogleElevationProvider : IElevationProvider
@@ -29,7 +29,7 @@ namespace AggregatedElevationService
 
         //TODO: asi nějak pořešit ten limit (2500 dotazů na den)
         //TODO: problém https://developers.google.com/maps/terms 10.5 d)
-        public async Task<List<Result>> GetElevationResultsAsync(IEnumerable<Location> locations)
+        public async Task<IEnumerable<Result>> GetElevationResultsAsync(IEnumerable<Location> locations)
         {
             var results = new List<Result>();
 
@@ -121,7 +121,7 @@ namespace AggregatedElevationService
         private static HttpClient httpClient = new HttpClient();
 
         //TODO: problém https://api.mapy.cz/#pact 3.4 a 4.5
-        public async Task<List<Result>> GetElevationResultsAsync(IEnumerable<Location> locations)
+        public async Task<IEnumerable<Result>> GetElevationResultsAsync(IEnumerable<Location> locations)
         {
             var results = new List<Result>();
 
