@@ -215,26 +215,24 @@ namespace AggregatedElevationService
             List<Result> seznamResults = elevationResults[1].ToList();
 
             //Uložení hodnot do databáze
-            if (source == "google" || source == "seznam")
+            try
             {
-                try
-                {
-                    int rowsAddedGoogle = PostgreDbConnector.InsertResultsParallel(googleResults, Source.Google);
-                    int rowsAddedSeznam = PostgreDbConnector.InsertResultsParallel(seznamResults, Source.Seznam);
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine(e.Message);
-                    logger.Error(e);
-                }
+                //int rowsAddedGoogle = PostgreDbConnector.InsertResultsParallel(googleResults, Source.Google);
+                int rowsAddedSeznam = PostgreDbConnector.InsertResultsParallel(seznamResults, Source.Seznam);
             }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+                logger.Error(e);
+            }
+
 
             switch (source)
             {
-                case "seznam":
-                    return seznamResults;
-                default:
+                case "google":
                     return googleResults;
+                default:
+                    return seznamResults;
             }
         }
     }

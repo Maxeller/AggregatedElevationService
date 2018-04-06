@@ -86,12 +86,12 @@ namespace AggregatedElevationService
                     if (responseResult == null) continue;
 
                     string latitude = responseResult.XPathSelectElement("location/lat")?.Value;
-                    string longtitude = responseResult.XPathSelectElement("location/lng")?.Value;
+                    string longitude = responseResult.XPathSelectElement("location/lng")?.Value;
                     string elevation = responseResult.XPathSelectElement("elevation")?.Value;
                     string resolution = responseResult.XPathSelectElement("resolution")?.Value;
 
                     bool isLatParsed = double.TryParse(latitude, NumberStyles.Float, CultureInfo.InvariantCulture, out double lat);
-                    bool isLngParsed = double.TryParse(longtitude, NumberStyles.Float, CultureInfo.InvariantCulture, out double lng);
+                    bool isLngParsed = double.TryParse(longitude, NumberStyles.Float, CultureInfo.InvariantCulture, out double lng);
                     bool isEleParsed = double.TryParse(elevation, NumberStyles.Float, CultureInfo.InvariantCulture, out double ele);
                     bool isResParsed = double.TryParse(resolution, NumberStyles.Float, CultureInfo.InvariantCulture, out double res);
                     if (isLatParsed && isLngParsed && isEleParsed && isResParsed)
@@ -151,11 +151,11 @@ namespace AggregatedElevationService
             {
                 XElement geometryCode = xmlDocument.XPathSelectElement("//name[contains(text(),'geometryCode')]/../value/array/data/value/array/data");
                 string latitude = ((XElement)geometryCode?.LastNode)?.Value;
-                string longtitude = ((XElement)geometryCode?.FirstNode)?.Value;
+                string longitude = ((XElement)geometryCode?.FirstNode)?.Value;
                 string elevation = xmlDocument.XPathSelectElement("//name[contains(text(),'altitudeCode')]/../value/array/data/value/double")?.Value;
 
                 bool isLatParsed = double.TryParse(latitude, NumberStyles.Float, CultureInfo.InvariantCulture, out double lat);
-                bool isLngParsed = double.TryParse(longtitude, NumberStyles.Float, CultureInfo.InvariantCulture, out double lng);
+                bool isLngParsed = double.TryParse(longitude, NumberStyles.Float, CultureInfo.InvariantCulture, out double lng);
                 bool isEleParsed = double.TryParse(elevation, NumberStyles.Float, CultureInfo.InvariantCulture, out double ele);
                 if (isLatParsed && isLngParsed && isEleParsed)
                 {

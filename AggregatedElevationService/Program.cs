@@ -24,9 +24,9 @@ namespace AggregatedElevationService
             {
                 InitializeDatabase();
             }
-            //ChooseXyzFiles(FILEPATH);
-            //StartElevationService();
-            TestElevationPrecision();
+            ChooseXyzFiles(FILEPATH);
+            StartElevationService();
+            //TestElevationPrecision();
             Console.ReadKey();
         }
 

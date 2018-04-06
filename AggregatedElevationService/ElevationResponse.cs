@@ -63,9 +63,9 @@ namespace AggregatedElevationService
             this.resolution = resolution;
         }
 
-        public Result(double latitude, double longtitude, double elevation, double resolution)
+        public Result(double latitude, double longitude, double elevation, double resolution)
         {
-            location = new Location(latitude, longtitude);
+            location = new Location(latitude, longitude);
             this.elevation = elevation;
             this.resolution = resolution;
         }
@@ -86,10 +86,10 @@ namespace AggregatedElevationService
             
         }
 
-        public Location(double latitude, double longtitude)
+        public Location(double latitude, double longitude)
         {
             lat = latitude;
-            lng = longtitude;
+            lng = longitude;
         }
 
         public override bool Equals(object obj)

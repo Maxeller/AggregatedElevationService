@@ -62,12 +62,25 @@ namespace AggregatedElevationService
                     //Vytvoření tabulky
                     cmd.CommandText =
                         "CREATE TABLE points (id bigserial NOT NULL, point geometry NOT NULL, latitude double precision," +
-                        "longtitude double precision, elevation double precision, resolution double precision, Source Source NOT NULL," +
+                        "longitude double precision, elevation double precision, resolution double precision, Source Source NOT NULL," +
                         "time_added timestamp with time zone NOT NULL, CONSTRAINT pk_points_id PRIMARY KEY (id), CONSTRAINT point_source UNIQUE (point, Source))";
                     try
                     {
                         cmd.ExecuteNonQuery();
                         Console.WriteLine("Points table created");
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine(e.Message);
+                        logger.Error(e);
+                    }
+                    //Vytvoření indexu
+                    cmd.CommandText =
+                        "CREATE INDEX points_gix ON points USING GIST (point)";
+                    try
+                    {
+                        cmd.ExecuteNonQuery();
+                        Console.WriteLine("Index created");
                     }
                     catch (Exception e)
                     {
@@ -95,12 +108,12 @@ namespace AggregatedElevationService
         /// Vrátí výsledek s lokací (ze zadané zem. šířky a výšky), která má výšku nejbližího bodu, přesnost a jeho vzdálenost od zadané zem. šířky a výšky.
         /// </summary>
         /// <param name="latitude">zeměpisná šířka</param>
-        /// <param name="longtitude">zeměpisná šířka</param>
+        /// <param name="longitude">zeměpisná šířka</param>
         /// <param name="within">Vzdálenost ve které bod hledat</param>
         /// <param name="premium">Prohledávat hodnoty nahrané ze souboru</param>
         /// <param name="spheroid">Použití přesnějšího měření vzdálenosti (pomalejší)</param>
         /// <returns>Výsledek s lokací (ze zadané zem. šířky a výšky), která má výšku nejbližího bodu, přesnost a jeho vzdálenost od zadané zem. šířky a výšky</returns>
-        public static ResultDistance GetClosestPointsWithin(double latitude, double longtitude, double within, bool premium, bool spheroid)
+        public static ResultDistance GetClosestPointsWithin(double latitude, double longitude, double within, bool premium, bool spheroid)
         {
             using (var conn = new NpgsqlConnection(CONNECTION_STRING))
             {
@@ -130,7 +143,7 @@ namespace AggregatedElevationService
                             "ORDER BY Distance LIMIT 1";
                     }
 
-                    cmd.Parameters.AddWithValue("x", NpgsqlDbType.Double, longtitude);
+                    cmd.Parameters.AddWithValue("x", NpgsqlDbType.Double, longitude);
                     cmd.Parameters.AddWithValue("y", NpgsqlDbType.Double, latitude);
                     cmd.Parameters.AddWithValue("wgs84", NpgsqlDbType.Smallint, SRID.WGS84);
                     cmd.Parameters.AddWithValue("within", NpgsqlDbType.Double, within);
@@ -138,20 +151,20 @@ namespace AggregatedElevationService
                     cmd.Prepare();
                     using (NpgsqlDataReader reader = cmd.ExecuteReader())
                     {
-                        if (!reader.HasRows) return new ResultDistance(new Result(latitude, longtitude, -1, -1), -1);
+                        if (!reader.HasRows) return new ResultDistance(new Result(latitude, longitude, -1, -1), -1);
                         while (reader.Read())
                         {
                             double elevation = reader.GetDouble(0);
                             double resolution = reader.GetDouble(1);
                             double distance = reader.GetDouble(2);
                             return new ResultDistance(
-                                new Result(latitude, longtitude, elevation, resolution != 0 ? resolution : -1),
+                                new Result(latitude, longitude, elevation, resolution != 0 ? resolution : -1),
                                 distance);
                         }
                     }
                 }
             }
-            return new ResultDistance(new Result(latitude, longtitude, -1, -1), -1);
+            return new ResultDistance(new Result(latitude, longitude, -1, -1), -1);
         }
 
         /// <summary>
@@ -226,7 +239,7 @@ namespace AggregatedElevationService
         }
 
         [Obsolete("Please use method GetClosestPointsWithin")]
-        public static ResultDistance GetClosestPoint(double latitude, double longtitude, bool premium, bool spheroid)
+        public static ResultDistance GetClosestPoint(double latitude, double longitude, bool premium, bool spheroid)
         {
             using (var conn = new NpgsqlConnection(CONNECTION_STRING))
             {
@@ -251,25 +264,25 @@ namespace AggregatedElevationService
                             (premium ? "" : "WHERE Source != @file ") +
                             "ORDER BY Distance LIMIT 1";
                     }
-                    cmd.Parameters.AddWithValue("x", NpgsqlDbType.Double, longtitude);
+                    cmd.Parameters.AddWithValue("x", NpgsqlDbType.Double, longitude);
                     cmd.Parameters.AddWithValue("y", NpgsqlDbType.Double, latitude);
                     cmd.Parameters.AddWithValue("wgs84", NpgsqlDbType.Smallint, SRID.WGS84);
                     if (!premium) cmd.Parameters.AddWithValue("file", NpgsqlDbType.Enum, Source.File);
                     cmd.Prepare();
                     using (NpgsqlDataReader reader = cmd.ExecuteReader())
                     {
-                        if (!reader.HasRows) return new ResultDistance(new Result(latitude, longtitude, -1, -1), -1);
+                        if (!reader.HasRows) return new ResultDistance(new Result(latitude, longitude, -1, -1), -1);
                         while (reader.Read())
                         {
                             double elevation = reader.GetDouble(0);
                             double resolution = reader.GetDouble(1);
                             double distance = reader.GetDouble(2);
-                            return new ResultDistance(new Result(latitude, longtitude, elevation, resolution != 0 ? resolution : -1), distance);
+                            return new ResultDistance(new Result(latitude, longitude, elevation, resolution != 0 ? resolution : -1), distance);
                         }
                     }
                 }
             }
-            return new ResultDistance(new Result(latitude, longtitude, -1, -1), -1);
+            return new ResultDistance(new Result(latitude, longitude, -1, -1), -1);
         }
 
         [Obsolete("Please use method GetClosestPointsWithinParallel")]
@@ -336,7 +349,7 @@ namespace AggregatedElevationService
                     using (var cmd = new NpgsqlCommand())
                     {
                         cmd.Connection = conn;
-                        cmd.CommandText = "INSERT INTO points(point, latitude, longtitude, elevation, resolution, Source, time_added) " +
+                        cmd.CommandText = "INSERT INTO points(point, latitude, longitude, elevation, resolution, Source, time_added) " +
                                           "SELECT Point.Result, ST_Y(Point.Result), ST_X(Point.Result), ST_Z(Point.Result), @res, @Source, now() " +
                                           "FROM(SELECT ST_SetSRID(ST_MakePoint(@lon, @lat, @ele), @wgs84) AS Result) AS Point";
                         cmd.Parameters.AddWithValue("lon", NpgsqlDbType.Double, result.location.lng);
@@ -374,7 +387,7 @@ namespace AggregatedElevationService
                         {
                             cmd.Connection = conn;
                             cmd.CommandText =
-                                "INSERT INTO points(point, latitude, longtitude, elevation, resolution, Source, time_added) " +
+                                "INSERT INTO points(point, latitude, longitude, elevation, resolution, Source, time_added) " +
                                 "SELECT Point.Result, ST_Y(Point.Result), ST_X(Point.Result), ST_Z(Point.Result), @res, @Source, now() " +
                                 "FROM(SELECT ST_SetSRID(ST_MakePoint(@lon, @lat, @ele), @wgs84) AS Result) AS Point";
                             cmd.Parameters.AddWithValue("lon", NpgsqlDbType.Double, result.location.lng);
@@ -417,7 +430,7 @@ namespace AggregatedElevationService
                         cmd.Connection = conn;
                         //Transformace z S-JTSK (5514) -> WGS84 (4326) | Vytvoření pointu -> Nastavení S-JTSK -> Trasformace na WGS84
                         cmd.CommandText =
-                            "INSERT INTO points(point, latitude, longtitude, elevation, resolution, Source, time_added) " +
+                            "INSERT INTO points(point, latitude, longitude, elevation, resolution, Source, time_added) " +
                             "SELECT Transform.Result, ST_Y(Transform.Result), ST_X(Transform.Result), @z, 0, @Source, now() " +
                             "FROM(SELECT ST_Transform(ST_SetSRID(ST_MakePoint(@x, @y), @input_srid), @wgs84) AS Result) AS Transform";
                         cmd.Parameters.AddWithValue("Source", NpgsqlDbType.Enum, Source.File);
@@ -461,7 +474,7 @@ namespace AggregatedElevationService
                         cmd.Connection = conn;
                         //Transformace z S-JTSK (5514) -> WGS84 (4326) | Vytvoření pointu -> Nastavení S-JTSK -> Trasformace na WGS84
                         cmd.CommandText =
-                            "INSERT INTO points(point, latitude, longtitude, elevation, resolution, Source, time_added) " +
+                            "INSERT INTO points(point, latitude, longitude, elevation, resolution, Source, time_added) " +
                             "SELECT Transform.Result, ST_Y(Transform.Result), ST_X(Transform.Result), @z, 0, @Source, now() " +
                             "FROM(SELECT ST_Transform(ST_SetSRID(ST_MakePoint(@x, @y), @input_srid), @wgs84) AS Result) AS Transform";
                         cmd.Parameters.AddWithValue("Source", NpgsqlDbType.Enum, Source.File);
@@ -539,7 +552,7 @@ namespace AggregatedElevationService
                 using (var cmd = new NpgsqlCommand())
                 {
                     cmd.Connection = conn;
-                    cmd.CommandText = "SELECT latitude, longtitude, elevation FROM points WHERE source = 'file' OFFSET @offset LIMIT @limit";
+                    cmd.CommandText = "SELECT latitude, longitude, elevation FROM points WHERE source = 'file' OFFSET @offset LIMIT @limit";
                     cmd.Parameters.AddWithValue("offset", NpgsqlDbType.Integer, offset);
                     cmd.Parameters.AddWithValue("limit", NpgsqlDbType.Integer, limit);
                     using (NpgsqlDataReader reader = cmd.ExecuteReader())
@@ -547,9 +560,9 @@ namespace AggregatedElevationService
                         while (reader.Read())
                         {
                             double latitude = reader.GetDouble(0);
-                            double longtitude = reader.GetDouble(1);
+                            double longitude = reader.GetDouble(1);
                             double elevation = reader.GetDouble(2);
-                            results.Add(new Result(latitude, longtitude, elevation, 0));
+                            results.Add(new Result(latitude, longitude, elevation, 0));
                         }
                     }
                 }
@@ -568,7 +581,7 @@ namespace AggregatedElevationService
                 {
                     cmd.Connection = conn;
                     cmd.CommandText =
-                        "SELECT latitude, longtitude, elevation, ST_DistanceSphere(points.point, ST_SetSRID(ST_MakePoint(@x, @y), @wgs84)) " +
+                        "SELECT latitude, longitude, elevation, ST_DistanceSphere(points.point, ST_SetSRID(ST_MakePoint(@x, @y), @wgs84)) " +
                         "AS Distance FROM points WHERE source = @file " +
                         "ORDER BY Distance OFFSET @offset LIMIT @limit";
                     cmd.Parameters.AddWithValue("x", NpgsqlDbType.Double, location.lng);
@@ -582,9 +595,9 @@ namespace AggregatedElevationService
                         while (reader.Read())
                         {
                             double latitude = reader.GetDouble(0);
-                            double longtitude = reader.GetDouble(1);
+                            double longitude = reader.GetDouble(1);
                             double elevation = reader.GetDouble(2);
-                            results.Add(new Result(latitude, longtitude, elevation, 0));
+                            results.Add(new Result(latitude, longitude, elevation, 0));
                         }
                     }
                 }
