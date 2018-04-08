@@ -75,6 +75,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AccuracyTesting.cs" />
+    <Compile Include="Helper.cs" />
     <Compile Include="PostgreDbConnector.cs" />
     <Compile Include="ElevationProvider.cs" />
     <Compile Include="ElevationServiceHost.cs" />

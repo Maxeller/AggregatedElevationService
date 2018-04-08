@@ -59,7 +59,8 @@ namespace AggregatedElevationService
                         Console.WriteLine(e.Message);
                         logger.Error(e);
                     }
-                    //Vytvoření tabulky
+                    //Vytvoření tabulek
+                    //Tabulka bodů
                     cmd.CommandText =
                         "CREATE TABLE points (id bigserial NOT NULL, point geometry NOT NULL, latitude double precision," +
                         "longitude double precision, elevation double precision, resolution double precision, Source Source NOT NULL," +
@@ -68,6 +69,20 @@ namespace AggregatedElevationService
                     {
                         cmd.ExecuteNonQuery();
                         Console.WriteLine("Points table created");
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine(e.Message);
+                        logger.Error(e);
+                    }
+                    //Tabulka uživatelů
+                    cmd.CommandText =
+                        "CREATE TABLE users (id serial NOT NULL, name text NOT NULL, api_key CHAR(64) NOT NULL, premium_user BOOLEAN NOT NULL," +
+                        "time_added timestamp with time zone NOT NULL, CONSTRAINT pk_users_id PRIMARY KEY (id))";
+                    try
+                    {
+                        cmd.ExecuteNonQuery();
+                        Console.WriteLine("Users table created");
                     }
                     catch (Exception e)
                     {
@@ -89,6 +104,67 @@ namespace AggregatedElevationService
                     }
                 }
             }
+            //Přidání testovacích uživatelů
+            InsertUser("Test Free", false);
+            InsertUser("Test Premium", false);
+            InsertUser("Taitale Mission Editor", true);
+        }
+
+        /// <summary>
+        /// Vloží uživatele do databáze a vytvořímu API klíč z SHA256
+        /// </summary>
+        /// <param name="name">Jméno uživatele</param>
+        /// <param name="premium">Prémiový uživatel</param>
+        public static void InsertUser(string name, bool premium)
+        {
+            using (var conn = new NpgsqlConnection(CONNECTION_STRING))
+            {
+                conn.Open();
+
+                using (var cmd = new NpgsqlCommand())
+                {
+                    cmd.Connection = conn;
+                    cmd.CommandText = "INSERT INTO users(name, api_key, premium_user, time_added) VALUES (@name, @key, @premium, now())";
+                    cmd.Parameters.AddWithValue("name", NpgsqlDbType.Text, name);
+                    cmd.Parameters.AddWithValue("key", NpgsqlDbType.Char, Helper.GetHashSha256(name));
+                    cmd.Parameters.AddWithValue("premium", NpgsqlDbType.Boolean, premium);
+                    try
+                    {
+                        cmd.ExecuteNonQuery();
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine(e.Message);
+                        logger.Error(e);
+                    }
+                }
+            }
+        }
+
+        public static (string name, bool premium) GetUser(string apiKey)
+        {
+            using (var conn = new NpgsqlConnection(CONNECTION_STRING))
+            {
+                conn.Open();
+                conn.MapEnum<Source>();
+                using (var cmd = new NpgsqlCommand())
+                {
+                    cmd.Connection = conn;
+                    cmd.CommandText = "SELECT name, premium FROM users WHERE api_key = @key";
+                    cmd.Parameters.AddWithValue("key", NpgsqlDbType.Char, apiKey);
+                    using (NpgsqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        if (!reader.HasRows) return (null, false);
+                        while (reader.Read())
+                        {
+                            string name = reader.GetString(0);
+                            bool premium = reader.GetBoolean(1);
+                            return (name, premium);
+                        }
+                    }
+                }
+            }
+            return (null, false);
         }
 
         /// <summary>

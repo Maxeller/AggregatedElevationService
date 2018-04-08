@@ -91,8 +91,8 @@ namespace AggregatedElevationService
 
         private static (bool existingUser, bool premiumUser) CheckApiKey(string key)
         {
-            //TODO: dodělat
-            return (key == "klic" || key == "premium", key == "premium");
+            (string name, bool premium) = PostgreDbConnector.GetUser(key);
+            return name == null ? (false, premium) : (true, premium);
         }
 
         private static IEnumerable<Location> ParseLocations(string locations)

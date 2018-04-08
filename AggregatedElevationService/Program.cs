@@ -4,7 +4,6 @@ using System.IO;
 using System.ServiceModel;
 using System.ServiceModel.Web;
 using System.Windows.Forms;
-using System.Xml.Serialization;
 
 namespace AggregatedElevationService
 {
@@ -110,20 +109,6 @@ namespace AggregatedElevationService
         private static void TestElevationPrecision()
         {
             AccuracyTesting.TestElevationPrecision(1000, 0, false);
-        }
-    }
-
-    static class Helper
-    {
-        public static string SerializeObject<T>(this T toSerialize)
-        {
-            var xmlSerializer = new XmlSerializer(toSerialize.GetType());
-
-            using (var textWriter = new StringWriter())
-            {
-                xmlSerializer.Serialize(textWriter, toSerialize);
-                return textWriter.ToString();
-            }
         }
     }
 }
