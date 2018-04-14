@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Globalization;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -8,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using System.Xml.XPath;
+using static System.Configuration.ConfigurationManager;
 
 namespace AggregatedElevationService
 {
@@ -24,7 +24,7 @@ namespace AggregatedElevationService
         private const byte BASE_URL_LENGTH = 94;
         private const short URL_CS_LIMIT = 7700;
 
-        private static readonly string API_KEY = ConfigurationManager.AppSettings["google_elevation_api"];
+        private static readonly string API_KEY = AppSettings["google_elevation_api"];
 
         private static HttpClient httpClient = new HttpClient();
 
@@ -126,7 +126,7 @@ namespace AggregatedElevationService
         {
             var results = new List<Result>();
 
-            foreach (Location location in locations) //TODO: paralllel?
+            foreach (Location location in locations)
             {
                 HttpResponseMessage response = await httpClient.PostAsync(BASE_URL, CreateContentWithPayload(location));
                 if (response.IsSuccessStatusCode)

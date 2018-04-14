@@ -4,6 +4,7 @@ using System.IO;
 using System.ServiceModel;
 using System.ServiceModel.Web;
 using System.Windows.Forms;
+using static System.Configuration.ConfigurationManager;
 
 namespace AggregatedElevationService
 {
@@ -11,19 +12,19 @@ namespace AggregatedElevationService
     {
         private static NLog.Logger logger = NLog.LogManager.GetCurrentClassLogger();
 
-        private static readonly string SCHEME = ConfigurationManager.AppSettings["scheme"];
-        private static readonly string HOST = ConfigurationManager.AppSettings["host"];
-        private static readonly string PORT = ConfigurationManager.AppSettings["port"];
-        private static readonly string PATH = ConfigurationManager.AppSettings["path"];
-        private static readonly string FILEPATH = ConfigurationManager.AppSettings["filepath"];
+        private static readonly string SCHEME = AppSettings["scheme"];
+        private static readonly string HOST = AppSettings["host"];
+        private static readonly string PORT = AppSettings["port"];
+        private static readonly string PATH = AppSettings["path"];
+        private static readonly string FILEPATH = AppSettings["filepath"];
 
         private static void Main(string[] args)
         {
-            if (ConfigurationManager.AppSettings["db_initialized"] == "false")
+            if (AppSettings["db_initialized"] == "false")
             {
                 InitializeDatabase();
             }
-            ChooseXyzFiles(FILEPATH);
+            //ChooseXyzFiles(FILEPATH);
             StartElevationService();
             //TestElevationPrecision();
             Console.ReadKey();
@@ -33,11 +34,11 @@ namespace AggregatedElevationService
         {
             PostgreDbConnector.InitializeDatabase();
 
-            Configuration configFile = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
+            Configuration configFile = OpenExeConfiguration(ConfigurationUserLevel.None);
             KeyValueConfigurationCollection settings = configFile.AppSettings.Settings;
             settings["db_initialized"].Value = "true";
             configFile.Save(ConfigurationSaveMode.Modified);
-            ConfigurationManager.RefreshSection(configFile.AppSettings.SectionInformation.Name);
+            RefreshSection(configFile.AppSettings.SectionInformation.Name);
 
             System.Diagnostics.Process.Start(Application.ExecutablePath);
             Environment.Exit(0);
@@ -101,6 +102,7 @@ namespace AggregatedElevationService
         private static void LoadXyzFile(string filepath)
         {
             Console.WriteLine("Loading file {0}", filepath);
+            logger.Info("Loading file {0}", filepath);
             int rowsAdded = PostgreDbConnector.LoadXyzFileParallel(filepath, SRID.S_JTSK);
             Console.WriteLine("Rows {0} added from {1}", rowsAdded, filepath);
             logger.Info("Rows {0} added from {1}", rowsAdded, filepath);

@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
-using System.Configuration;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -10,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Npgsql;
 using NpgsqlTypes;
+using static System.Configuration.ConfigurationManager;
 
 namespace AggregatedElevationService
 {
@@ -17,10 +17,10 @@ namespace AggregatedElevationService
     {
         private static NLog.Logger logger = NLog.LogManager.GetCurrentClassLogger();
 
-        private static readonly string DB_HOST = ConfigurationManager.AppSettings["db_host"];
-        private static readonly string DB_USERNAME = ConfigurationManager.AppSettings["db_username"];
-        private static readonly string DB_PASSWORD = ConfigurationManager.AppSettings["db_password"];
-        private static readonly string DB_DATABASE = ConfigurationManager.AppSettings["db_database"];
+        private static readonly string DB_HOST = AppSettings["db_host"];
+        private static readonly string DB_USERNAME = AppSettings["db_username"];
+        private static readonly string DB_PASSWORD = AppSettings["db_password"];
+        private static readonly string DB_DATABASE = AppSettings["db_database"];
         private static readonly string CONNECTION_STRING = $"Host={DB_HOST};Username={DB_USERNAME};Password={DB_PASSWORD};Database={DB_DATABASE};ApplicationName=AggregatedElevationService;MaxAutoPrepare=3";
 
         /// <summary>
@@ -48,7 +48,7 @@ namespace AggregatedElevationService
                         logger.Error(e);
                     }
                     //Vytvoření enumu pro určení zdroje
-                    cmd.CommandText = "CREATE TYPE Source AS ENUM('google', 'seznam', 'file');";
+                    cmd.CommandText = "CREATE TYPE Source AS ENUM('google', 'seznam', 'file')";
                     try
                     {
                         cmd.ExecuteNonQuery();
@@ -150,7 +150,7 @@ namespace AggregatedElevationService
                 using (var cmd = new NpgsqlCommand())
                 {
                     cmd.Connection = conn;
-                    cmd.CommandText = "SELECT name, premium FROM users WHERE api_key = @key";
+                    cmd.CommandText = "SELECT name, premium_user FROM users WHERE api_key = @key";
                     cmd.Parameters.AddWithValue("key", NpgsqlDbType.Char, apiKey);
                     using (NpgsqlDataReader reader = cmd.ExecuteReader())
                     {
@@ -202,7 +202,7 @@ namespace AggregatedElevationService
                     {
                         cmd.CommandText =
                             "SELECT elevation, resolution, ST_DistanceSphere(point, Input) as Distance FROM (" +
-                            "SELECT *, ST_DWithin(point::geography, Input::geography, @within) as Within FROM (" +
+                            "SELECT *, ST_DWithin(point::geography, Input::geography, @within, false) as Within FROM (" +
                             "SELECT *, ST_SetSRID(ST_MakePoint(@x, @y), @wgs84) as Input FROM points) as mp) as dw " +
                             "WHERE Within = true " +
                             (premium ? "" : "AND Source != @file ") +
@@ -254,7 +254,7 @@ namespace AggregatedElevationService
         public static List<ResultDistance> GetClosestPointsWithinParallel(IEnumerable<Location> locations, double within, bool premium, bool spheroid)
         {
             var results = new ConcurrentBag<ResultDistance>();
-            Parallel.ForEach(locations, location =>
+            Parallel.ForEach(locations, new ParallelOptions(){MaxDegreeOfParallelism = 4} , location =>
             {
                 using (var conn = new NpgsqlConnection(CONNECTION_STRING))
                 {
@@ -267,7 +267,7 @@ namespace AggregatedElevationService
                         {
                             cmd.CommandText =
                                 "SELECT elevation, resolution, ST_DistanceSphere(point, Input) as Distance FROM (" +
-                                "SELECT *, ST_DWithin(point::geography, Input::geography, @within) as Within FROM (" +
+                                "SELECT *, ST_DWithin(point::geography, Input::geography, @within, false) as Within FROM (" +
                                 "SELECT *, ST_SetSRID(ST_MakePoint(@x, @y), @wgs84) as Input FROM points) as mp) as dw " +
                                 "WHERE Within = true " +
                                 (premium ? "" : "AND Source != @file ") +

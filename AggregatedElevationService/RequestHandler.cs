@@ -11,7 +11,7 @@ namespace AggregatedElevationService
     {
         private static NLog.Logger logger = NLog.LogManager.GetCurrentClassLogger();
 
-        private const double MAX_DISTANCE = 2.0d; //TODO: určit jestli je to dostatečná vzálenost
+        private const double MAX_DISTANCE = 2.0d;
         private const double WITHIN_DISTANCE = 10.0d;
 
         public async Task<ElevationResponse> HandleRequest(string key, string locations, string source)
@@ -33,7 +33,7 @@ namespace AggregatedElevationService
             if (source == null)
             {
                 Stopwatch s = Stopwatch.StartNew();
-                locsWithoutElevation = GetPointsFromDbParallel(parsedLocations, ref elevationResponse, premiumUser, spheroid: false);
+                locsWithoutElevation = (List<Location>) GetPointsFromDbParallel(parsedLocations, ref elevationResponse, premiumUser, spheroid: false);
                 s.Stop();
                 Console.WriteLine("Getting points: " + s.ElapsedMilliseconds);
 
@@ -59,33 +59,10 @@ namespace AggregatedElevationService
                 Console.WriteLine(e.Message);
                 logger.Error(e);
             }
-            //TODO: tohle by asi šlo taky někam schovat takže to udělej
-            if (providerResults == null)
-            {
-                if (source != null) throw new ElevationProviderException("Results from providers were empty");
-                elevationResponse.status = ElevationResponses.INCOMPLETE;
-                return elevationResponse;
-            }
-
-            foreach (Result result in elevationResponse.result)
-            {
-                if (result.elevation != -1) continue;
-                Result providerResult = providerResults.Find(r => r.location.Equals(result.location));
-                if (providerResult == null)
-                {
-                    //Google rád ořezává počet desetinných míst - kontrola s počtem, který Google vrací (ten je taky variabilní)
-                    string number = providerResults[0].location.lat.ToString(CultureInfo.InvariantCulture);
-                    int length = number.Substring(number.IndexOf(".")).Length-1; 
-                    double lat = Math.Round(result.location.lat, length);
-                    double lng = Math.Round(result.location.lng, length);
-                    providerResult = providerResults.Find(r => r.location.Equals(new Location(lat, lng)));
-                }
-                result.elevation = providerResult.elevation;
-                result.resolution = providerResult.resolution;
-            }
-
-            //Vrácení kompletní odpovědi
-            elevationResponse.status = ElevationResponses.OK;
+            
+            //Integrace výsledků do odpovědi
+            IntegrateResults(providerResults, ref elevationResponse);
+            
             return elevationResponse;
         }
 
@@ -97,7 +74,7 @@ namespace AggregatedElevationService
 
         private static IEnumerable<Location> ParseLocations(string locations)
         {
-            string[] locationsSplit = locations.Split('|'); //TODO: kontrola formátování
+            string[] locationsSplit = locations.Split('|');
             var latLongs = new List<Location>();
             foreach (string l in locationsSplit)
             {
@@ -125,7 +102,7 @@ namespace AggregatedElevationService
             return latLongs;
         }
 
-        private static List<Location> GetPointsFromDb(IEnumerable<Location> locations, ref ElevationResponse elevationResponse, bool premiumUser, bool spheroid)
+        private static IEnumerable<Location> GetPointsFromDb(IEnumerable<Location> locations, ref ElevationResponse elevationResponse, bool premiumUser, bool spheroid)
         {
             var locsWithoutElevation = new List<Location>();
             foreach (Result result in elevationResponse.result)
@@ -155,7 +132,7 @@ namespace AggregatedElevationService
             return locsWithoutElevation;
         }
 
-        private static List<Location> GetPointsFromDbParallel(IEnumerable<Location> locations, ref ElevationResponse elevationResponse, bool premiumUser, bool spheroid)
+        private static IEnumerable<Location> GetPointsFromDbParallel(IEnumerable<Location> locations, ref ElevationResponse elevationResponse, bool premiumUser, bool spheroid)
         {
             var locsWithoutElevation = new List<Location>();
             List<ResultDistance> resultDistances;
@@ -234,6 +211,34 @@ namespace AggregatedElevationService
                 default:
                     return seznamResults;
             }
+        }
+
+        private static void IntegrateResults(List<Result> providerResults, ref ElevationResponse elevationResponse)
+        {
+            if (providerResults == null)
+            {
+                elevationResponse.status = ElevationResponses.INCOMPLETE;
+            }
+
+            foreach (Result result in elevationResponse.result)
+            {
+                if (result.elevation != -1) continue;
+                Result providerResult = providerResults.Find(r => r.location.Equals(result.location));
+                if (providerResult == null)
+                {
+                    //Google rád ořezává počet desetinných míst - kontrola s počtem, který Google vrací (ten je taky variabilní)
+                    string number = providerResults[0].location.lat.ToString(CultureInfo.InvariantCulture);
+                    int length = number.Substring(number.IndexOf(".")).Length - 1;
+                    double lat = Math.Round(result.location.lat, length);
+                    double lng = Math.Round(result.location.lng, length);
+                    providerResult = providerResults.Find(r => r.location.Equals(new Location(lat, lng)));
+                }
+                result.elevation = providerResult.elevation;
+                result.resolution = providerResult.resolution;
+            }
+
+            //Vrácení kompletní odpovědi
+            elevationResponse.status = ElevationResponses.OK;
         }
     }
 }
