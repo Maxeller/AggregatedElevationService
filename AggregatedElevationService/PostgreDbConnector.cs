@@ -106,7 +106,7 @@ namespace AggregatedElevationService
             }
             //Přidání testovacích uživatelů
             InsertUser("Test Free", false);
-            InsertUser("Test Premium", false);
+            InsertUser("Test Premium", true);
             InsertUser("Taitale Mission Editor", true);
         }
 
