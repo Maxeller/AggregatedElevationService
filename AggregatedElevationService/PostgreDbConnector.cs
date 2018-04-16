@@ -18,10 +18,11 @@ namespace AggregatedElevationService
         private static NLog.Logger logger = NLog.LogManager.GetCurrentClassLogger();
 
         private static readonly string DB_HOST = AppSettings["db_host"];
+        private static readonly string DB_PORT = AppSettings["db_port"];
         private static readonly string DB_USERNAME = AppSettings["db_username"];
         private static readonly string DB_PASSWORD = AppSettings["db_password"];
         private static readonly string DB_DATABASE = AppSettings["db_database"];
-        private static readonly string CONNECTION_STRING = $"Host={DB_HOST};Username={DB_USERNAME};Password={DB_PASSWORD};Database={DB_DATABASE};ApplicationName=AggregatedElevationService;MaxAutoPrepare=3";
+        private static readonly string CONNECTION_STRING = $"Host={DB_HOST};Port={DB_PORT};Username={DB_USERNAME};Password={DB_PASSWORD};Database={DB_DATABASE};ApplicationName=AggregatedElevationService";
 
         /// <summary>
         /// Inicializuje databázi s názvem uvedeném v konfiguračním souboru.

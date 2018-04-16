@@ -166,13 +166,12 @@ namespace AggregatedElevationService
 
         private static async Task<List<Result>> GetElevation(IReadOnlyCollection<Location> locations, string source)
         {
-            //TODO: vylepšit source
             var google = new GoogleElevationProvider();
             var seznam = new SeznamElevationProvider();
             var elevationTasks = new List<Task<IEnumerable<Result>>>()
             {
                 google.GetElevationResultsAsync(locations),
-                seznam.GetElevationResultsAsync(locations),
+                seznam.GetElevationResultsAsync(locations)
             };
 
             IEnumerable<Result>[] elevationResults = null;
@@ -185,7 +184,6 @@ namespace AggregatedElevationService
                 Console.WriteLine(e.Message);
                 logger.Error(e);
             }
-
             if (elevationResults == null) throw new ElevationProviderException("Elevation result were empty");
 
             List<Result> googleResults = elevationResults[0].ToList();

@@ -47,7 +47,6 @@ namespace AggregatedElevationService
                 {
                     throw new ElevationProviderException($"{response.ReasonPhrase} - {response.RequestMessage}");
                 }
-
             }
             return results;
         }
