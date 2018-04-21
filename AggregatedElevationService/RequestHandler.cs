@@ -13,11 +13,20 @@ namespace AggregatedElevationService
 
         private const double MAX_DISTANCE = 2.0d;
         private const double WITHIN_DISTANCE = 10.0d;
+        private const double WITHIN_DISTANCE_APPROX = 5.0d;
+
+        private bool approx = false;
 
         public async Task<ElevationResponse> HandleRequest(string key, string locations, string source)
         {
+            if (source == "approx")
+            {
+                approx = true;
+                source = null;
+            }
+
             //Zjištění validity API klíče
-            var (existingUser, premiumUser) = CheckApiKey(key);
+            (bool existingUser, bool premiumUser) = CheckApiKey(key);
             if (!existingUser)
             {
                 return new ElevationResponse(ElevationResponses.INVALID_KEY, null);
@@ -28,7 +37,7 @@ namespace AggregatedElevationService
             //Vytvoření odpovědi s lokacemi 
             var elevationResponse = new ElevationResponse(parsedLocations);
 
-            //Nalezení nejbližího bodu v DB (pokud nebyl nebyl přímo vybrán source [spíše použit jako testovací funkce])
+            //Nalezení nejbližího bodu v DB (pokud nebyl nebyl přímo vybrán source)
             List<Location> locsWithoutElevation;
             if (source == null)
             {
@@ -46,6 +55,13 @@ namespace AggregatedElevationService
             else
             {
                 locsWithoutElevation = (List<Location>) parsedLocations;
+            }
+
+            //Aproximace
+            if (approx)
+            {
+                locsWithoutElevation = (List<Location>) Approximate(locsWithoutElevation, ref elevationResponse, premiumUser, false);
+                if (locsWithoutElevation.Count == 0) return elevationResponse;
             }
 
             //Načtení hodnot (které nebyly nalezeny v DB) z externích poskytovatelů výškopisu
@@ -102,6 +118,24 @@ namespace AggregatedElevationService
             return latLongs;
         }
 
+        private static IEnumerable<Location> Approximate(IEnumerable<Location> locations, ref ElevationResponse elevationResponse, bool premiumUser, bool spheroid)
+        {
+            var locsWithoutElevation = new List<Location>();
+            foreach (Location location in locations)
+            {
+                Result result = Approximation.Average(location, WITHIN_DISTANCE_APPROX, premiumUser, spheroid);
+                if (result == null)
+                {
+                    locsWithoutElevation.Add(location);
+                    continue;
+                }
+                elevationResponse.result.Find(er => er.location.Equals(location)).elevation = result.elevation;
+                elevationResponse.result.Find(er => er.location.Equals(location)).resolution = result.resolution;
+            }
+
+            return locsWithoutElevation;
+        }
+
         private static IEnumerable<Location> GetPointsFromDb(IEnumerable<Location> locations, ref ElevationResponse elevationResponse, bool premiumUser, bool spheroid)
         {
             var locsWithoutElevation = new List<Location>();
@@ -110,7 +144,7 @@ namespace AggregatedElevationService
                 var closest = new ResultDistance();
                 try
                 {
-                    closest = PostgreDbConnector.GetClosestPointsWithin(result.location, WITHIN_DISTANCE, premiumUser, spheroid);
+                    closest = PostgreDbConnector.GetClosestPointWithin(result.location, WITHIN_DISTANCE, premiumUser, spheroid);
                 }
                 catch (Exception e)
                 {
@@ -138,7 +172,7 @@ namespace AggregatedElevationService
             List<ResultDistance> resultDistances;
             try
             {
-                resultDistances = PostgreDbConnector.GetClosestPointsWithinParallel(locations, WITHIN_DISTANCE, premiumUser, spheroid);
+                resultDistances = PostgreDbConnector.GetClosestPointWithinParallel(locations, WITHIN_DISTANCE, premiumUser, spheroid);
             }
             catch (Exception e)
             {

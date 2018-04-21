@@ -141,6 +141,11 @@ namespace AggregatedElevationService
             }
         }
 
+        /// <summary>
+        /// Získá jméno a indikátor prémiového uživatele na základě API klíče
+        /// </summary>
+        /// <param name="apiKey">API klíč</param>
+        /// <returns>Dvojice (jméno, premium)</returns>
         public static (string name, bool premium) GetUser(string apiKey)
         {
             using (var conn = new NpgsqlConnection(CONNECTION_STRING))
@@ -174,9 +179,9 @@ namespace AggregatedElevationService
         /// <param name="premium">Prohledávat hodnoty nahrané ze souboru</param>
         /// <param name="spheroid">Použití přesnějšího měření vzdálenosti (pomalejší)</param>
         /// <returns>výsledek s lokací, která má výšku nejbližího bodu, přesnost a jeho vzdálenost od zadané lokace</returns>
-        public static ResultDistance GetClosestPointsWithin(Location location, double within , bool premium, bool spheroid)
+        public static ResultDistance GetClosestPointWithin(Location location, double within , bool premium, bool spheroid)
         {
-            return GetClosestPointsWithin(location.lat, location.lng, within, premium, spheroid);
+            return GetClosestPointWithin(location.lat, location.lng, within, premium, spheroid);
         }
 
         /// <summary>
@@ -188,7 +193,7 @@ namespace AggregatedElevationService
         /// <param name="premium">Prohledávat hodnoty nahrané ze souboru</param>
         /// <param name="spheroid">Použití přesnějšího měření vzdálenosti (pomalejší)</param>
         /// <returns>Výsledek s lokací (ze zadané zem. šířky a výšky), která má výšku nejbližího bodu, přesnost a jeho vzdálenost od zadané zem. šířky a výšky</returns>
-        public static ResultDistance GetClosestPointsWithin(double latitude, double longitude, double within, bool premium, bool spheroid)
+        public static ResultDistance GetClosestPointWithin(double latitude, double longitude, double within, bool premium, bool spheroid)
         {
             using (var conn = new NpgsqlConnection(CONNECTION_STRING))
             {
@@ -250,7 +255,7 @@ namespace AggregatedElevationService
         /// <param name="premium">Prohledávat hodnoty nahrané ze souboru</param>
         /// <param name="spheroid">Použití přesnějšího měření vzdálenosti (pomalejší)</param>
         /// <returns>List lokací s výškou nejbližího bodu, přesnost a jeho vzdálenost od zadané lokace</returns>
-        public static List<ResultDistance> GetClosestPointsWithinParallel(IEnumerable<Location> locations, double within, bool premium, bool spheroid)
+        public static List<ResultDistance> GetClosestPointWithinParallel(IEnumerable<Location> locations, double within, bool premium, bool spheroid)
         {
             var results = new ConcurrentBag<ResultDistance>();
             Parallel.ForEach(locations, new ParallelOptions(){MaxDegreeOfParallelism = 4} , location =>
@@ -307,13 +312,69 @@ namespace AggregatedElevationService
             return results.ToList();
         }
 
-        [Obsolete("Please use method GetClosestPointsWithin")]
+        public static List<ResultDistance> GetClosestPointsWithin(Location location, double within, bool premium, bool spheroid)
+        {
+            List<ResultDistance> results = new List<ResultDistance>();
+            using (var conn = new NpgsqlConnection(CONNECTION_STRING))
+            {
+                conn.Open();
+                conn.MapEnum<Source>();
+                using (var cmd = new NpgsqlCommand())
+                {
+                    cmd.Connection = conn;
+                    if (!spheroid)
+                    {
+                        cmd.CommandText =
+                            "SELECT latitude, longitude, elevation, resolution, ST_DistanceSphere(point, Input) as Distance FROM (" +
+                            "SELECT *, ST_DWithin(point::geography, Input::geography, @within, false) as Within FROM (" +
+                            "SELECT *, ST_SetSRID(ST_MakePoint(@x, @y), @wgs84) as Input FROM points) as mp) as dw " +
+                            "WHERE Within = true " +
+                            (premium ? "" : "AND Source != @file ") +
+                            "ORDER BY Distance";
+                    }
+                    else
+                    {
+                        cmd.CommandText =
+                            "SELECT latitude, longitude, elevation, resolution, ST_DistanceSpheroid(point, input, \'SPHEROID[\"WGS 84\",6378137,298.257223563]\') as Distance FROM (" +
+                            "SELECT *, ST_DWithin(point::geography, input::geography, @within) as Within FROM (" +
+                            "SELECT *, ST_SetSRID(ST_MakePoint(@x, @y), @wgs84) as input FROM points) as mp) as dw " +
+                            "WHERE Within = true " +
+                            (premium ? "" : "AND Source != @file ") +
+                            "ORDER BY Distance";
+                    }
+
+                    cmd.Parameters.AddWithValue("x", NpgsqlDbType.Double, location.lng);
+                    cmd.Parameters.AddWithValue("y", NpgsqlDbType.Double, location.lat);
+                    cmd.Parameters.AddWithValue("wgs84", NpgsqlDbType.Smallint, SRID.WGS84);
+                    cmd.Parameters.AddWithValue("within", NpgsqlDbType.Double, within);
+                    if (!premium) cmd.Parameters.AddWithValue("file", NpgsqlDbType.Enum, Source.File);
+                    cmd.Prepare();
+                    using (NpgsqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        if (!reader.HasRows) results.Add(new ResultDistance(new Result(null, -1, -1), -1));
+                        while (reader.Read())
+                        {
+                            double latitude = reader.GetDouble(0);
+                            double longitude = reader.GetDouble(1);
+                            double elevation = reader.GetDouble(2);
+                            double resolution = reader.GetDouble(3);
+                            double distance = reader.GetDouble(4);
+                            results.Add(new ResultDistance(new Result(latitude, longitude, elevation, resolution), distance));
+                        }
+                    }
+                }
+            }
+
+            return results;
+        }
+
+        [Obsolete("Please use method GetClosestPointWithin")]
         public static ResultDistance GetClosestPoint(Location location, bool premium, bool spheroid)
         {
             return GetClosestPoint(location.lat, location.lng, premium, spheroid);
         }
 
-        [Obsolete("Please use method GetClosestPointsWithin")]
+        [Obsolete("Please use method GetClosestPointWithin")]
         public static ResultDistance GetClosestPoint(double latitude, double longitude, bool premium, bool spheroid)
         {
             using (var conn = new NpgsqlConnection(CONNECTION_STRING))
@@ -360,7 +421,7 @@ namespace AggregatedElevationService
             return new ResultDistance(new Result(latitude, longitude, -1, -1), -1);
         }
 
-        [Obsolete("Please use method GetClosestPointsWithinParallel")]
+        [Obsolete("Please use method GetClosestPointWithinParallel")]
         public static List<ResultDistance> GetClosestPointParallel(IEnumerable<Location> locations, bool premium, bool spheroid)
         {
             var results = new ConcurrentBag<ResultDistance>();
