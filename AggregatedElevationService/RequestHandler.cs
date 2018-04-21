@@ -33,7 +33,7 @@ namespace AggregatedElevationService
             if (source == null)
             {
                 Stopwatch s = Stopwatch.StartNew();
-                locsWithoutElevation = (List<Location>) GetPointsFromDbParallel(parsedLocations, ref elevationResponse, premiumUser, spheroid: false);
+                locsWithoutElevation = (List<Location>) GetPointsFromDbParallel(parsedLocations, ref elevationResponse, premiumUser, false);
                 s.Stop();
                 Console.WriteLine("Getting points: " + s.ElapsedMilliseconds);
 

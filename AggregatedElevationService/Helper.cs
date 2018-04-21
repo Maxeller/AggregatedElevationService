@@ -8,7 +8,7 @@ namespace AggregatedElevationService
 {
     static class Helper
     {
-        public static string SerializeObject<T>(this T toSerialize)
+        public static string XmlSerializeObject<T>(this T toSerialize)
         {
             var xmlSerializer = new XmlSerializer(toSerialize.GetType());
 

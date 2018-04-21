@@ -121,7 +121,6 @@ namespace AggregatedElevationService
             using (var conn = new NpgsqlConnection(CONNECTION_STRING))
             {
                 conn.Open();
-
                 using (var cmd = new NpgsqlCommand())
                 {
                     cmd.Connection = conn;
@@ -147,7 +146,6 @@ namespace AggregatedElevationService
             using (var conn = new NpgsqlConnection(CONNECTION_STRING))
             {
                 conn.Open();
-                conn.MapEnum<Source>();
                 using (var cmd = new NpgsqlCommand())
                 {
                     cmd.Connection = conn;
@@ -199,7 +197,7 @@ namespace AggregatedElevationService
                 using (var cmd = new NpgsqlCommand())
                 {
                     cmd.Connection = conn;
-                    if (spheroid)
+                    if (!spheroid)
                     {
                         cmd.CommandText =
                             "SELECT elevation, resolution, ST_DistanceSphere(point, Input) as Distance FROM (" +
@@ -264,7 +262,7 @@ namespace AggregatedElevationService
                     using (var cmd = new NpgsqlCommand())
                     {
                         cmd.Connection = conn;
-                        if (spheroid)
+                        if (!spheroid)
                         {
                             cmd.CommandText =
                                 "SELECT elevation, resolution, ST_DistanceSphere(point, Input) as Distance FROM (" +
@@ -647,7 +645,7 @@ namespace AggregatedElevationService
             return results;
         }
 
-        public static IEnumerable<Result> QueryForTestingElevationPrecisionClosestPoints(Location location, int limit = 100, int offset = 0)
+        public static IEnumerable<Result> QueryForTestingElevationPrecisionClosestPoints(Location location, int limit = 100)
         {
             var results = new List<Result>();
             using (var conn = new NpgsqlConnection(CONNECTION_STRING))
@@ -660,12 +658,11 @@ namespace AggregatedElevationService
                     cmd.CommandText =
                         "SELECT latitude, longitude, elevation, ST_DistanceSphere(points.point, ST_SetSRID(ST_MakePoint(@x, @y), @wgs84)) " +
                         "AS Distance FROM points WHERE source = @file " +
-                        "ORDER BY Distance OFFSET @offset LIMIT @limit";
+                        "ORDER BY Distance LIMIT @limit";
                     cmd.Parameters.AddWithValue("x", NpgsqlDbType.Double, location.lng);
                     cmd.Parameters.AddWithValue("y", NpgsqlDbType.Double, location.lat);
                     cmd.Parameters.AddWithValue("wgs84", NpgsqlDbType.Smallint, SRID.WGS84);
                     cmd.Parameters.AddWithValue("file", NpgsqlDbType.Enum, Source.File);
-                    cmd.Parameters.AddWithValue("offset", NpgsqlDbType.Integer, offset);
                     cmd.Parameters.AddWithValue("limit", NpgsqlDbType.Integer, limit);
                     using (NpgsqlDataReader reader = cmd.ExecuteReader())
                     {
@@ -687,8 +684,8 @@ namespace AggregatedElevationService
 
     struct ResultDistance
     {
-        public Result Result { get; set; }
-        public double Distance { get; set; }
+        public Result Result { get; }
+        public double Distance { get; }
 
         public ResultDistance(Result result, double distance) : this()
         {

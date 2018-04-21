@@ -14,7 +14,7 @@ namespace AggregatedElevationService
         public static async void TestElevationPrecision(int limit = 100, int offset = 0, bool file = false, bool closest = true)
         {
             IEnumerable<Result> results = closest
-                ? PostgreDbConnector.QueryForTestingElevationPrecisionClosestPoints(new Location(50.499805, 13.6484716), limit, offset)
+                ? PostgreDbConnector.QueryForTestingElevationPrecisionClosestPoints(new Location(50.499805, 13.6484716), limit)
                 : PostgreDbConnector.QueryForTestingElevationPrecision(limit, offset);
 
             IEnumerable<Result> resultsEnumerable = results.ToList();
