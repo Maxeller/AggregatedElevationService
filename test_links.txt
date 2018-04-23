@@ -1,3 +1,3 @@
-localhost:8889/elevation/xml?locations=39.7391536,-104.9847034|50.482999,13.430489&key=klic
-localhost:8889/elevation/json?locations=39.7391536,-104.9847034|50.482999,13.430489&key=klic
-https://maps.googleapis.com/maps/api/elevation/xml?locations=39.7391536,-104.9847034|50.482999, 13.430489&key=AIzaSyBXNtwvKHCj4d-fkOr4rqhYloJRwISgR7g
+localhost:8889/elevation/xml?locations=39.7391536,-104.9847034|50.482999,13.430489&key=10933f17f1763c354013e911c571e28c6e625792548973ae466e5079a2021945
+localhost:8889/elevation/json?locations=39.7391536,-104.9847034|50.482999,13.430489&key=10933f17f1763c354013e911c571e28c6e625792548973ae466e5079a2021945
+https://maps.googleapis.com/maps/api/elevation/xml?locations=39.7391536,-104.9847034|50.482999,13.430489&key=AIzaSyC0o2yBnNIHSrHXnSVJD7TyHMv8cW9DBec
