@@ -573,8 +573,8 @@ namespace AggregatedElevationService
                         cmd.Parameters.AddWithValue("x", NpgsqlDbType.Double, xyz.x);
                         cmd.Parameters.AddWithValue("y", NpgsqlDbType.Double, xyz.y);
                         cmd.Parameters.AddWithValue("z", NpgsqlDbType.Double, xyz.z);
-                        cmd.Parameters.AddWithValue("jstk", NpgsqlDbType.Smallint, inputSrid);
-                        cmd.Parameters.AddWithValue("input_srid", NpgsqlDbType.Smallint, SRID.WGS84);
+                        cmd.Parameters.AddWithValue("input_srid", NpgsqlDbType.Smallint, inputSrid);
+                        cmd.Parameters.AddWithValue("wgs84", NpgsqlDbType.Smallint, SRID.WGS84);
                         cmd.Prepare();
                         try
                         {
@@ -648,6 +648,11 @@ namespace AggregatedElevationService
             while ((line = sr.ReadLine()) != null)
             {
                 lineNumber++;
+                if (line.Contains(" "))
+                {
+                    line = line.Replace(" ", "\t");
+                }
+
                 if (line.Contains("  "))
                 {
                     line = line.Replace("  ", "\t");

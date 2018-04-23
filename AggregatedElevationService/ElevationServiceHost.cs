@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.ServiceModel;
 using System.ServiceModel.Channels;
 using System.ServiceModel.Web;
@@ -26,7 +27,9 @@ namespace AggregatedElevationService
             var requestHandler = new RequestHandler();
             try
             {
+                //Stopwatch s = Stopwatch.StartNew();
                 elevationResponse = await requestHandler.HandleRequest(key, locations, source);
+                //Console.WriteLine("Request took {0} ms", s.ElapsedMilliseconds);
             }
             catch (Exception e)
             {
@@ -53,7 +56,9 @@ namespace AggregatedElevationService
             var requestHandler = new RequestHandler();
             try
             {
+                //Stopwatch s = Stopwatch.StartNew();
                 elevationResponse = await requestHandler.HandleRequest(key, locations, source);
+                //Console.WriteLine("Request took {0} ms", s.ElapsedMilliseconds);
             }
             catch (Exception e)
             {

@@ -84,8 +84,7 @@ namespace AggregatedElevationService
             }
             else
             {
-                //TODO: dodělat kontrolu
-                string[] fileNumbers = new string[0];
+                var fileNumbers = new string[0];
                 if (line != null)
                 {
                     fileNumbers = line.Split(',');
@@ -93,10 +92,11 @@ namespace AggregatedElevationService
                 foreach (string fileNumber in fileNumbers)
                 {
                     string file = files[int.Parse(fileNumber)-1];
-                    LoadXyzFile(file);
+                    //LoadXyzFile(file);
+                    var fi = new FileInfo(file);
+                    fi.MoveTo(fi.Directory.FullName+@"\"+fi.Name+" - loaded"+fi.Extension); //přejmenování souboru - označení, že byl již načten
                 }
             }
-            //TODO: označit, že jsou už načtený
         }
 
         private static void LoadXyzFile(string filepath)
@@ -110,7 +110,7 @@ namespace AggregatedElevationService
 
         private static void TestElevationPrecision()
         {
-            AccuracyTesting.TestElevationPrecision(1000, 0, false);
+            AccuracyTesting.TestElevationPrecision(100, 0, true, true);
         }
     }
 }

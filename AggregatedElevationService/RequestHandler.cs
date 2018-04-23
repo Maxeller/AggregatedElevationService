@@ -26,14 +26,17 @@ namespace AggregatedElevationService
             }
 
             //Zjištění validity API klíče
+            //Stopwatch s = Stopwatch.StartNew();
             (bool existingUser, bool premiumUser) = CheckApiKey(key);
             if (!existingUser)
             {
                 return new ElevationResponse(ElevationResponses.INVALID_KEY, null);
             }
+            //Console.WriteLine("User search: {0} ms",s.ElapsedMilliseconds);
 
             //Parsování a kontrola lokací v URL
             IEnumerable<Location> parsedLocations = ParseLocations(locations).ToList();
+            //Console.WriteLine("Number of locs: {0}", parsedLocations.ToList().Count);
             //Vytvoření odpovědi s lokacemi 
             var elevationResponse = new ElevationResponse(parsedLocations);
 
@@ -41,11 +44,9 @@ namespace AggregatedElevationService
             List<Location> locsWithoutElevation;
             if (source == null)
             {
-                Stopwatch s = Stopwatch.StartNew();
+                //s.Restart();
                 locsWithoutElevation = (List<Location>) GetPointsFromDbParallel(parsedLocations, ref elevationResponse, premiumUser, false);
-                s.Stop();
-                Console.WriteLine("Getting points: " + s.ElapsedMilliseconds);
-
+                //Console.WriteLine("Getting points from DB parallel: {0} ms", s.ElapsedMilliseconds);
                 if (locsWithoutElevation.Count == 0)
                 {
                     elevationResponse.status = ElevationResponses.OK;
@@ -60,7 +61,9 @@ namespace AggregatedElevationService
             //Aproximace
             if (approx)
             {
+                //s.Restart();
                 locsWithoutElevation = (List<Location>) Approximate(locsWithoutElevation, ref elevationResponse, premiumUser, false);
+                //Console.WriteLine("Approximation: {0} ms", s.ElapsedMilliseconds);
                 if (locsWithoutElevation.Count == 0) return elevationResponse;
             }
 
@@ -68,7 +71,9 @@ namespace AggregatedElevationService
             List<Result> providerResults = null;
             try
             {
+                //s.Restart();
                 providerResults = await GetElevation(locsWithoutElevation, source);
+                Console.WriteLine("Getting info from external sources: {0} ms", s.ElapsedMilliseconds);
             }
             catch (Exception e)
             {
