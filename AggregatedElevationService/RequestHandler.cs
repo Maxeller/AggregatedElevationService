@@ -73,7 +73,7 @@ namespace AggregatedElevationService
             {
                 //s.Restart();
                 providerResults = await GetElevation(locsWithoutElevation, source);
-                Console.WriteLine("Getting info from external sources: {0} ms", s.ElapsedMilliseconds);
+                //Console.WriteLine("Getting info from external sources: {0} ms", s.ElapsedMilliseconds);
             }
             catch (Exception e)
             {
