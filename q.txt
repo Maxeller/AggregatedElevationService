@@ -1,8 +1,0 @@
-SELECT srid, auth_name, auth_srid, srtext, proj4textv FROM public.spatial_ref_sys WHERE srid = 32633
-
-SELECT Transform.Result, ST_Y(Transform.Result), ST_X(Transform.Result), ST_Z(Transform.Result), 0, 'file', now()
-FROM(SELECT ST_Transform(ST_SetSRID(ST_MakePoint(-727660, -1030640, 181,090), 5514), 4326) AS Result) AS Transform
-
-SELECT Transform.Result, ST_Y(Transform.Result), ST_X(Transform.Result), ST_Z(Transform.Result), 0, 'file', now()
-FROM(SELECT ST_Transform(ST_SetSRID(ST_MakePoint(471027.033164, 5562742.147283, 177.790000), 32633), 4326) AS Result) AS Transform
-
