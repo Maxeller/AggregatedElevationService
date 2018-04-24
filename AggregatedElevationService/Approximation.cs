@@ -5,6 +5,14 @@ namespace AggregatedElevationService
 {
     public static class Approximation
     {
+        /// <summary>
+        /// Vrátí průměrnou výšku vypočítanou jako průměr z nejbližších bodů od zadané lokace
+        /// </summary>
+        /// <param name="location">Lokace</param>
+        /// <param name="within">Vzdálenost ve které bod hledat</param>
+        /// <param name="premium">Prohledávat hodnoty nahrané ze souboru</param>
+        /// <param name="spheroid">Použití přesnějšího měření vzdálenosti (pomalejší)</param>
+        /// <returns>Výsledek s lokací, výškou a přesností</returns>
         public static Result Average(Location location, double within, bool premium, bool spheroid)
         {
             List<ResultDistance> closest = PostgreDbConnector.GetClosestPointsWithin(location, within, premium, spheroid);

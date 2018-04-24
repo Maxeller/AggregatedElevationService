@@ -17,6 +17,13 @@ namespace AggregatedElevationService
 
         private bool approx = false;
 
+        /// <summary>
+        /// Zpracuje požadavek
+        /// </summary>
+        /// <param name="key">API klíč</param>
+        /// <param name="locations">Řetezec lokací</param>
+        /// <param name="source">Zdroj</param>
+        /// <returns>Odpověď služby</returns>
         public async Task<ElevationResponse> HandleRequest(string key, string locations, string source)
         {
             if (source == "approx")
@@ -87,12 +94,22 @@ namespace AggregatedElevationService
             return elevationResponse;
         }
 
+        /// <summary>
+        /// Kontrola zdali se API klíč nachází v DB
+        /// </summary>
+        /// <param name="key">API klíč</param>
+        /// <returns>Dvojice (existující uživatel, prémiový uživatel)</returns>
         private static (bool existingUser, bool premiumUser) CheckApiKey(string key)
         {
             (string name, bool premium) = PostgreDbConnector.GetUser(key);
             return name == null ? (false, premium) : (true, premium);
         }
 
+        /// <summary>
+        /// Rozparsuje řetezec lokací na kolekci lokací
+        /// </summary>
+        /// <param name="locations">Řetezec lokací</param>
+        /// <returns>Kolekce lokací</returns>
         private static IEnumerable<Location> ParseLocations(string locations)
         {
             string[] locationsSplit = locations.Split('|');
@@ -123,6 +140,14 @@ namespace AggregatedElevationService
             return latLongs;
         }
 
+        /// <summary>
+        /// Provede pokus o aproximaci výšky zadaných lokací
+        /// </summary>
+        /// <param name="locations">kolekce lokací pro které chceme aproximovat výšku</param>
+        /// <param name="elevationResponse">referencovaná odpověď do které chceme výsledky zapsat</param>
+        /// <param name="premiumUser">Prémiový uživatel</param>
+        /// <param name="spheroid">Použít sféroid pro výpočet vzdálenosti (pomalejší)</param>
+        /// <returns>Kolekce lokací pro které nebyla aproximována výška</returns>
         private static IEnumerable<Location> Approximate(IEnumerable<Location> locations, ref ElevationResponse elevationResponse, bool premiumUser, bool spheroid)
         {
             var locsWithoutElevation = new List<Location>();
@@ -141,6 +166,14 @@ namespace AggregatedElevationService
             return locsWithoutElevation;
         }
 
+        /// <summary>
+        /// Provede pokus o nalezení nejbližšího bodu a použití jeho výšky
+        /// </summary>
+        /// <param name="locations">kolekce lokací pro které chceme získat výšku</param>
+        /// <param name="elevationResponse">referencovaná odpověď do které chceme výsledky zapsat</param>
+        /// <param name="premiumUser">Prémiový uživatel</param>
+        /// <param name="spheroid">Použít sféroid pro výpočet vzdálenosti (pomalejší)</param>
+        /// <returns>Kolekce lokací pro které nebyla nalezena výška</returns>
         private static IEnumerable<Location> GetPointsFromDb(IEnumerable<Location> locations, ref ElevationResponse elevationResponse, bool premiumUser, bool spheroid)
         {
             var locsWithoutElevation = new List<Location>();
@@ -171,6 +204,14 @@ namespace AggregatedElevationService
             return locsWithoutElevation;
         }
 
+        /// <summary>
+        /// Paralelně provede pokus o nalezení nejbližšího bodu a použití jeho výšky
+        /// </summary>
+        /// <param name="locations">kolekce lokací pro které chceme získat výšku</param>
+        /// <param name="elevationResponse">referencovaná odpověď do které chceme výsledky zapsat</param>
+        /// <param name="premiumUser">Prémiový uživatel</param>
+        /// <param name="spheroid">Použít sféroid pro výpočet vzdálenosti (pomalejší)</param>
+        /// <returns>Kolekce lokací pro které nebyla nalezena výška</returns>
         private static IEnumerable<Location> GetPointsFromDbParallel(IEnumerable<Location> locations, ref ElevationResponse elevationResponse, bool premiumUser, bool spheroid)
         {
             var locsWithoutElevation = new List<Location>();
@@ -203,6 +244,12 @@ namespace AggregatedElevationService
             return locsWithoutElevation;
         }
 
+        /// <summary>
+        /// Asynchroně získá výšky pro lokace od externích poskytovatelů výškopisu
+        /// </summary>
+        /// <param name="locations">kolekce lokací pro které chceme získat výšku</param>
+        /// <param name="source">zdroj externích dat</param>
+        /// <returns>kolekce výsledků</returns>
         private static async Task<List<Result>> GetElevation(IReadOnlyCollection<Location> locations, string source)
         {
             var google = new GoogleElevationProvider();
@@ -250,6 +297,11 @@ namespace AggregatedElevationService
             }
         }
 
+        /// <summary>
+        /// Integruje výsledky od externího poskytovatele do odpovědi
+        /// </summary>
+        /// <param name="providerResults">výsledky od externího poskytovatele výškopisu</param>
+        /// <param name="elevationResponse">referencována odpověď do které chceme výsledky zapsat</param>
         private static void IntegrateResults(List<Result> providerResults, ref ElevationResponse elevationResponse)
         {
             if (providerResults == null)

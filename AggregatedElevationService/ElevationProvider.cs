@@ -28,6 +28,11 @@ namespace AggregatedElevationService
 
         private static HttpClient httpClient = new HttpClient();
 
+        /// <summary>
+        /// Asynchorně získá výškopisná data od Googlu
+        /// </summary>
+        /// <param name="locations">kolekce lokací pro které chceme získat výšku</param>
+        /// <returns>Výsledky od Googlu</returns>
         public async Task<IEnumerable<Result>> GetElevationResultsAsync(IEnumerable<Location> locations)
         {
             var results = new List<Result>();
@@ -118,6 +123,11 @@ namespace AggregatedElevationService
 
         private static HttpClient httpClient = new HttpClient();
 
+        /// <summary>
+        /// Asynchorně získá výškopisná data od Seznamu
+        /// </summary>
+        /// <param name="locations">kolekce lokací pro které chceme získat výšku</param>
+        /// <returns>Výsledky od Seznamu</returns>
         public async Task<IEnumerable<Result>> GetElevationResultsAsync(IEnumerable<Location> locations)
         {
             var results = new List<Result>();

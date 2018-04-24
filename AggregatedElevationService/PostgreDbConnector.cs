@@ -312,6 +312,14 @@ namespace AggregatedElevationService
             return results.ToList();
         }
 
+        /// <summary>
+        /// Vrátí kolekci nejbližšího bodů k zadané lokaci
+        /// </summary>
+        /// <param name="location">Lokace</param>
+        /// <param name="within">Vzdálenost ve které bod hledat</param>
+        /// <param name="premium">Prohledávat hodnoty nahrané ze souboru</param>
+        /// <param name="spheroid">Použití přesnějšího měření vzdálenosti (pomalejší)</param>
+        /// <returns>List s výsledky a vzdáleností od zadané lokace</returns>
         public static List<ResultDistance> GetClosestPointsWithin(Location location, double within, bool premium, bool spheroid)
         {
             List<ResultDistance> results = new List<ResultDistance>();
@@ -473,6 +481,12 @@ namespace AggregatedElevationService
             return results.ToList();
         }
 
+        /// <summary>
+        /// Vloží výsledky externího poskytovatele výškopisu do tabulky bodů
+        /// </summary>
+        /// <param name="results">Kolekce výsledků</param>
+        /// <param name="source">Externí poskytovatel výškopisu</param>
+        /// <returns>Počet zapsaných řádků</returns>
         public static int InsertResults(IEnumerable<Result> results, Source source)
         {
             int rowCount = 0;
@@ -510,6 +524,12 @@ namespace AggregatedElevationService
             return rowCount;
         }
 
+        /// <summary>
+        /// Paralelně vloží výsledky externího poskytovatele výškopisu do tabulky bodů
+        /// </summary>
+        /// <param name="results">Kolekce výsledků</param>
+        /// <param name="source">Externí poskytovatel výškopisu</param>
+        /// <returns>Počet zapsaných řádků</returns>
         public static int InsertResultsParallel(IEnumerable<Result> results, Source source)
         {
             int rowCount = 0;
@@ -550,6 +570,12 @@ namespace AggregatedElevationService
             return rowCount;
         }
 
+        /// <summary>
+        /// Zapíše data z XYZ souboru do tabulky bodů
+        /// </summary>
+        /// <param name="filepath">Cesta k souboru</param>
+        /// <param name="inputSrid">SRID dat v souboru</param>
+        /// <returns>Počet zapsaných řádků</returns>
         public static int LoadXyzFile(string filepath, SRID inputSrid)
         {
             IEnumerable<Xyz> xyzs = ExtractXyzs(filepath);
@@ -594,6 +620,12 @@ namespace AggregatedElevationService
             return rowCount;
         }
 
+        /// <summary>
+        /// Paralelně zapíše data z XYZ souboru do tabulky bodů
+        /// </summary>
+        /// <param name="filepath">Cesta k souboru</param>
+        /// <param name="inputSrid">SRID dat v souboru</param>
+        /// <returns>Počet zapsaných řádků</returns>
         public static int LoadXyzFileParallel(string filepath, SRID inputSrid)
         {
             IEnumerable<Xyz> xyzs = ExtractXyzs(filepath);
@@ -774,6 +806,9 @@ namespace AggregatedElevationService
         }
     }
 
+    /// <summary>
+    /// Zdroj výškopisných dat
+    /// </summary>
     enum Source
     {
         [PgName("google")] Google,
@@ -781,6 +816,9 @@ namespace AggregatedElevationService
         [PgName("file")] File
     }
 
+    /// <summary>
+    /// Spatial Reference System Identifier
+    /// </summary>
     enum SRID
     {
         WGS84 = 4326,
