@@ -25,8 +25,8 @@ namespace AggregatedElevationService
                 InitializeDatabase();
             }
             //ChooseXyzFiles(FILEPATH);
-            StartElevationService();
-            //TestElevationPrecision();
+            //StartElevationService();
+            TestElevationPrecision();
             Console.ReadKey();
         }
 
@@ -110,7 +110,8 @@ namespace AggregatedElevationService
 
         private static void TestElevationPrecision()
         {
-            AccuracyTesting.TestElevationPrecision(100, 0, true, true);
+            //AccuracyTesting.TestElevationPrecision(100, 0, true, true);
+            AccuracyTesting.TestElevationPrecision(10, 0, false, false);
         }
     }
 }
